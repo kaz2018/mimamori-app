@@ -6,6 +6,12 @@ class StoryAgent {
         this.speechSynthesis = window.speechSynthesis;
         this.isReading = false;
         this.apiBaseUrl = window.location.origin; // ADK APIのベースURL
+        this.pageCount = 0; // ページカウンター追加
+        this.maxPages = 3; // 最大3ページ
+        this.nextPagePromise = null; // 次ページの事前準備
+        this.nextPageData = null; // 次ページのプリロードデータ
+        this.p3ImageUrl = null; // P3の画像URLを保持
+        this.imageStatusInterval = null; // 画像生成状況監視のインターバル
         this.init();
     }
 
@@ -63,64 +69,135 @@ class StoryAgent {
     }
 
     async startStory(storyType) {
+        // 既存の画像生成状況の監視を停止
+        this.stopImageStatusMonitoring();
+        
+        this.pageCount = 1; // P1から開始
+        console.log('新しいストーリー開始 - P1');
+        
         this.showLoading();
         
         try {
-            // ADKエージェントとの通信をシミュレート
-            const response = await this.callStoryAgent(storyType);
-            this.displayStory(response);
+            // P1のデータを取得
+            const p1Response = await this.callStoryAgentStart(storyType);
+            
+            // P1を表示
+            this.displayStory(p1Response);
+            
         } catch (error) {
             console.error('Story generation failed:', error);
             this.showError('お話の準備に失敗しました。もう一度お試しください。');
         }
     }
+    
 
-    async callStoryAgent(storyType) {
+
+    async callStoryAgentStart(topic) {
         try {
-            console.log(`ADKエージェントを呼び出し中: ${storyType}`);
+            console.log(`🔄 ストーリー開始APIを呼び出し中: ${topic}`);
+            console.log(`📡 API URL: ${this.apiBaseUrl}/agent/storytelling/start`);
             
-            const response = await fetch(`${this.apiBaseUrl}/agent/storytelling`, {
+            const requestBody = { topic: topic };
+            console.log(`📤 リクエストボディ:`, requestBody);
+            
+            const response = await fetch(`${this.apiBaseUrl}/agent/storytelling/start`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    input: `${storyType}の読み聞かせを始めてください。インタラクティブなお話をお願いします。`
-                })
+                body: JSON.stringify(requestBody)
             });
             
+            console.log(`📥 レスポンスステータス: ${response.status}`);
+            
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                const errorText = await response.text();
+                console.error(`❌ HTTP エラー: ${response.status} - ${errorText}`);
+                throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
             }
             
             const data = await response.json();
-            console.log('ADKエージェント応答:', data);
+            console.log('✅ ストーリー開始API応答:', data);
             
-            // ADKエージェントからの応答を解析して選択肢を抽出
-            const parsedStory = this.parseStoryResponse(data.result);
+            // セッションIDを保存
+            this.currentSession = data.session_id;
+            console.log(`💾 セッションID保存: ${this.currentSession}`);
             
-            // 画像URLがあれば保存
-            this.extractAndSaveImageUrl(data.result);
+            const textResult = data.text_result || '';
+            const imageUrl = data.image_url;
+            
+            console.log('📝 テキスト結果:', textResult);
+            console.log('🖼️ 画像URL:', imageUrl);
             
             return {
-                text: parsedStory.text || `${storyType}のお話を始めましょう。`,
-                choices: parsedStory.choices || [
-                    "物語を続ける",
-                    "別の選択をする"
-                ],
-                image: null
+                text: textResult,
+                choices: ["物語を続ける"],
+                image: imageUrl,
+                originalResponse: textResult
             };
             
         } catch (error) {
-            console.error('ADKエージェント呼び出しエラー:', error);
+            console.error('❌ ストーリー開始API呼び出しエラー:', error);
             
-            // エラー時のフォールバック（デモ用）
+            // エラー時のフォールバック
             return {
-                text: `ADKエージェントに接続中です...\n\n（デモモード）\nわーい！${storyType}、いいね！\n\nむかしむかし、深い森の奥に、ちっちゃなウサギさんが住んでいました。名前は「ふわふわ」。\n\nある日、ふわふわは森の奥から聞こえてくる、美しい歌声に気づきました。\n\nさて、ふわふわはどうするかな？`,
-                choices: [
-                    "歌声のする方へ、勇気を出して進んでみる！",
-                    "やっぱりちょっと怖いから、いつものお気に入りの場所で遊ぶ！"
-                ],
+                text: `ストーリー生成中です...\n\n（デモモード）\nわーい！${topic}、いいね！\n\nむかしむかし、深い森の奥に、ちっちゃなウサギさんが住んでいました。名前は「ふわふわ」。`,
+                choices: ["物語を続ける"],
+                image: null
+            };
+        }
+    }
+
+    async callStoryAgentNext() {
+        try {
+            console.log(`🔄 ストーリー継続APIを呼び出し中: session_id=${this.currentSession}`);
+            console.log(`📡 API URL: ${this.apiBaseUrl}/agent/storytelling/next`);
+            
+            const requestBody = { session_id: this.currentSession };
+            console.log(`📤 リクエストボディ:`, requestBody);
+            
+            const response = await fetch(`${this.apiBaseUrl}/agent/storytelling/next`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestBody)
+            });
+            
+            console.log(`📥 レスポンスステータス: ${response.status}`);
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error(`❌ HTTP エラー: ${response.status} - ${errorText}`);
+                throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+            }
+            
+            const data = await response.json();
+            console.log('✅ ストーリー継続API応答:', data);
+            
+            const textResult = data.text_result || '';
+            const imageUrl = data.image_url;
+            
+            console.log('📝 テキスト結果:', textResult);
+            console.log('🖼️ 画像URL:', imageUrl);
+            
+            // 「おしまい」が含まれているかチェック
+            const isEnd = textResult.includes('おしまい');
+            console.log(`🏁 ストーリー終了チェック: ${isEnd}`);
+            
+            return {
+                text: textResult,
+                choices: isEnd ? [] : ["物語を続ける"],
+                image: imageUrl,
+                originalResponse: textResult
+            };
+            
+        } catch (error) {
+            console.error('❌ ストーリー継続API呼び出しエラー:', error);
+            
+            return {
+                text: 'ストーリーの続きを読み込み中です...',
+                choices: ["物語を続ける"],
                 image: null
             };
         }
@@ -197,23 +274,27 @@ class StoryAgent {
         }
 
         // 画像URLやMarkdown画像を文章から除去
-        if (hasImage) {
-            // 画像URL行を除去
-            storyText = storyText.replace(/画像URL:\s*https:\/\/[^\s\n]+/g, '');
-            // Markdown画像を除去
-            storyText = storyText.replace(/!\[ハッピーエンド\]\([^)]+\)/g, '');
-            // 画像関連の説明文を除去
-            storyText = storyText.replace(/素敵な絵ができたよ！見てみて！\s*/g, '');
-            storyText = storyText.replace(/わあ！見て！これが.*?絵だよ！\s*/g, '');
-            // 余分な改行を整理
-            storyText = storyText.replace(/\n\s*\n\s*\n/g, '\n\n').trim();
-        }
+        // 画像URL行を除去
+        storyText = storyText.replace(/画像URL:\s*https:\/\/[^\s\n]+/gi, '');
+        // 全てのMarkdown画像を除去
+        storyText = storyText.replace(/!\[[^\]]*\]\([^)]+\)/g, '');
+        // 選択肢A, B形式の画像も除去
+        storyText = storyText.replace(/!\[選択肢[AB]\]\([^)]+\)/g, '');
+        // 画像関連の説明文を除去
+        storyText = storyText.replace(/素敵な絵ができたよ！見てみて！\s*/g, '');
+        storyText = storyText.replace(/わあ！見て！これが.*?絵だよ！\s*/g, '');
+        storyText = storyText.replace(/画像を.*?しました[。！]?\s*/g, '');
+        // 「続きを読む」などの不要なテキストを除去
+        storyText = storyText.replace(/続きを読む[。\.…]*\s*/g, '');
+        storyText = storyText.replace(/続きは次回[。\.…]*\s*/g, '');
+        storyText = storyText.replace(/\.\.\.\s*$/g, '');
+        // 余分な改行を整理
+        storyText = storyText.replace(/\n\s*\n\s*\n/g, '\n\n').trim();
 
-        // 画像がある場合や物語が終了している場合の特別な選択肢
+        // 物語が終了している場合の特別な選択肢
         let finalChoices = choices;
-        if (hasImage || responseText.includes('おしまい') || responseText.includes('めでたし') || choices.length === 0) {
+        if (responseText.includes('おしまい') || responseText.includes('めでたし')) {
             finalChoices = [
-                "🖼️ 生成された画像を見る",
                 "🔄 新しいお話を始める"
             ];
         } else if (choices.length === 0) {
@@ -267,23 +348,159 @@ class StoryAgent {
     }
 
     displayStory(storyData) {
+        console.log('=== displayStory 開始 ===');
+        console.log('受信したストーリーデータ:', storyData);
+        
         this.isLoading = false;
         document.getElementById('loading-section').classList.add('hidden');
         document.getElementById('story-section').classList.remove('hidden');
         
         // ストーリーテキストを表示
         document.getElementById('story-text').textContent = storyData.text;
+        console.log('ストーリーテキスト表示:', storyData.text);
         
-        // 選択肢を表示
-        this.displayChoices(storyData.choices);
+        // 画像表示の処理
+        let imageUrlToDisplay = null;
         
-        // 画像があれば表示
-        if (storyData.image) {
-            this.displayImage(storyData.image);
+        if (this.pageCount === 2 && storyData.image) {
+            // P2では画像を表示
+            imageUrlToDisplay = storyData.image;
+            console.log('P2の画像URLを表示:', imageUrlToDisplay);
+        } else if (this.pageCount === 3 && storyData.image) {
+            // P3では画像を表示
+            imageUrlToDisplay = storyData.image;
+            console.log('P3の画像URLを表示:', imageUrlToDisplay);
+        } else if (storyData.image) {
+            // 通常の画像表示（P1など）
+            imageUrlToDisplay = storyData.image;
+            console.log('通常の画像URLを表示:', imageUrlToDisplay);
         }
+        
+        // 画像を表示
+        if (imageUrlToDisplay) {
+            console.log('画像URLを表示:', imageUrlToDisplay);
+            this.showPictureArea();
+            this.displayImage(imageUrlToDisplay);
+        } else {
+            console.log('画像URLなし - 画像エリア非表示');
+            this.hidePictureArea();
+        }
+        
+        // 選択肢を表示（分岐なしの場合は「続きを読む」ボタン）
+        this.displaySimpleChoices(storyData.choices);
+        
+        console.log('=== displayStory 完了 ===');
         
         // 自動読み上げ（オプション）
         this.readStoryText(storyData.text);
+    }
+    
+    showPictureArea() {
+        const pictureArea = document.getElementById('picture-area');
+        if (pictureArea) {
+            pictureArea.style.display = 'flex';
+        }
+    }
+    
+    hidePictureArea() {
+        const pictureArea = document.getElementById('picture-area');
+        if (pictureArea) {
+            pictureArea.style.display = 'none';
+        }
+    }
+    
+    displayPicturebookImages(images, choices) {
+        console.log('=== displayPicturebookImages 開始 ===');
+        console.log('画像データ:', images);
+        console.log('選択肢:', choices);
+        
+        const pictureDisplay = document.getElementById('picture-display');
+        console.log('picture-display要素:', pictureDisplay);
+        
+        if (!pictureDisplay) {
+            console.error('picture-display要素が見つかりません');
+            return;
+        }
+        
+        // 画像表示エリアをクリア
+        pictureDisplay.innerHTML = '';
+        
+        if (images.length === 1 && images[0].cloud_url) {
+            console.log('単一画像表示:', images[0].cloud_url);
+            // 単一画像を自動表示
+            const img = document.createElement('img');
+            img.src = images[0].cloud_url;
+            img.alt = 'ストーリー画像';
+            img.style.maxWidth = '100%';
+            img.style.height = 'auto';
+            img.onload = () => console.log('✅ ストーリー画像読み込み完了:', images[0].cloud_url);
+            img.onerror = () => console.error('❌ ストーリー画像読み込み失敗:', images[0].cloud_url);
+            
+            pictureDisplay.appendChild(img);
+            console.log('単一画像DOM追加完了');
+        } else if (images.length > 1) {
+            console.log('複数画像 - 最初の画像を表示:', images[0].cloud_url);
+            // 複数画像がある場合は最初の画像を表示
+            const img = document.createElement('img');
+            img.src = images[0].cloud_url;
+            img.alt = 'ストーリー画像';
+            img.style.maxWidth = '100%';
+            img.style.height = 'auto';
+            img.onload = () => console.log('ストーリー画像読み込み完了');
+            img.onerror = () => console.error('ストーリー画像読み込み失敗');
+            
+            pictureDisplay.appendChild(img);
+        }
+    }
+    
+    hidePictureLoading() {
+        const pictureDisplay = document.getElementById('picture-display');
+        if (pictureDisplay) {
+            pictureDisplay.innerHTML = '<p style="color: #999;">画像準備中...</p>';
+        }
+    }
+    
+    selectImageChoice(index, choiceText) {
+        console.log(`画像選択: ${index} - ${choiceText}`);
+        this.selectChoice(choiceText);
+    }
+    
+    extractImageDataFromResponse(responseText) {
+        console.log('画像データ抽出中:', responseText);
+        
+        const images = [];
+        
+        // 最優先: Cloud Storage URLの直接検索
+        const cloudStorageMatches = responseText.match(/https:\/\/storage\.googleapis\.com\/childstory-ggl-research-3db4311e\/[^\s\n)]+\.png/g);
+        if (cloudStorageMatches) {
+            console.log('Cloud Storage URLを発見:', cloudStorageMatches);
+            cloudStorageMatches.forEach((url, index) => {
+                images.push({
+                    cloud_url: url,
+                    choice_index: index,
+                    alt: `ストーリー画像${index + 1}`
+                });
+            });
+        }
+        
+        // Markdown画像の抽出（バックアップ）
+        const allMarkdownMatches = responseText.match(/!\[[^\]]*\]\((https:\/\/storage\.googleapis\.com\/[^)]+)\)/g);
+        if (allMarkdownMatches) {
+            console.log('Markdown画像を発見:', allMarkdownMatches);
+            allMarkdownMatches.forEach((match, index) => {
+                const urlMatch = match.match(/\((https:\/\/[^)]+)\)/);
+                if (urlMatch && !images.some(img => img.cloud_url === urlMatch[1])) {
+                    images.push({
+                        cloud_url: urlMatch[1],
+                        choice_index: index,
+                        alt: `ストーリー画像${index + 1}`
+                    });
+                }
+            });
+        }
+        
+        console.log('抽出された画像データ:', images);
+        return images;
     }
 
     displayChoices(choices) {
@@ -302,13 +519,147 @@ class StoryAgent {
             });
         }
     }
+    
+    displaySimpleChoices(choices) {
+        const choicesContainer = document.getElementById('story-choices');
+        choicesContainer.innerHTML = '';
+
+        // choicesが空配列なら、物語の終わり。
+        if (!choices || choices.length === 0) {
+            // 「新しいお話を始める」ボタンを表示
+            const endBtn = document.createElement('button');
+            endBtn.className = 'choice-btn';
+            endBtn.textContent = '🔄 新しいお話を始める';
+            endBtn.onclick = () => this.newStory();
+            choicesContainer.appendChild(endBtn);
+            return; // ここで処理を終了
+        }
+
+        // choicesに何か（"物語を続ける"）が入っている場合は、「続きを読む」ボタンを表示
+        const continueBtn = document.createElement('button');
+        continueBtn.className = 'choice-btn';
+        continueBtn.textContent = '📖 続きを読む';
+        continueBtn.id = 'continue-btn'; // IDを追加
+        
+        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+        // ここが最重要ポイント！
+        // クリックされたら、新しいAPIを呼び出すcontinueStory()に直接つなぐ
+        continueBtn.onclick = () => this.continueStory();
+        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+        
+        choicesContainer.appendChild(continueBtn);
+        
+        // 画像生成状況の監視を開始
+        this.startImageStatusMonitoring();
+    }
+    
+    // 画像生成状況を監視する関数
+    async startImageStatusMonitoring() {
+        if (!this.currentSession || this.pageCount >= this.maxPages) {
+            return;
+        }
+        
+        console.log('🔄 画像生成状況の監視を開始');
+        
+        // 既存のインターバルをクリア
+        if (this.imageStatusInterval) {
+            clearInterval(this.imageStatusInterval);
+        }
+        
+        // 3秒ごとに画像生成状況をチェック
+        this.imageStatusInterval = setInterval(async () => {
+            try {
+                const response = await fetch(`${this.apiBaseUrl}/agent/storytelling/image-status/${this.currentSession}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('📊 画像生成状況:', data);
+                    
+                    const continueBtn = document.getElementById('continue-btn');
+                    if (continueBtn) {
+                        if (data.has_next_image) {
+                            // 画像が生成完了
+                            continueBtn.disabled = false;
+                            continueBtn.textContent = '📖 続きを読む';
+                            continueBtn.style.opacity = '1';
+                            console.log('✅ 次のページの画像が準備完了');
+                            clearInterval(this.imageStatusInterval);
+                        } else {
+                            // 画像生成中
+                            continueBtn.disabled = true;
+                            continueBtn.textContent = '⏳ 画像を準備中...';
+                            continueBtn.style.opacity = '0.6';
+                            console.log('⏳ 次のページの画像を生成中...');
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('❌ 画像生成状況の取得に失敗:', error);
+            }
+        }, 3000); // 3秒ごとにチェック
+    }
+    
+    // 画像生成状況の監視を停止
+    stopImageStatusMonitoring() {
+        if (this.imageStatusInterval) {
+            clearInterval(this.imageStatusInterval);
+            this.imageStatusInterval = null;
+            console.log('🛑 画像生成状況の監視を停止');
+        }
+    }
+    
+    async continueStory() {
+        // ページ制限チェック
+        if (this.pageCount >= this.maxPages) {
+            console.log('最大ページ数に達しました');
+            this.endStory();
+            return;
+        }
+        
+        this.showLoading();
+        
+        try {
+            this.pageCount++;
+            console.log(`🔄 P${this.pageCount}に進行中（前のページ: ${this.pageCount - 1}）`);
+            
+            // 新しいAPIを使用して次のページを取得
+            const response = await this.callStoryAgentNext();
+            
+            this.displayStory(response);
+        } catch (error) {
+            console.error('Story continuation failed:', error);
+            this.showError('お話の続きに失敗しました。');
+        }
+    }
+    
+    endStory() {
+        // 画像生成状況の監視を停止
+        this.stopImageStatusMonitoring();
+        
+        const choicesContainer = document.getElementById('story-choices');
+        choicesContainer.innerHTML = '';
+        
+        const endBtn = document.createElement('button');
+        endBtn.className = 'choice-btn';
+        endBtn.textContent = '🔄 新しいお話を始める';
+        endBtn.onclick = () => this.newStory();
+        choicesContainer.appendChild(endBtn);
+    }
+    
+
 
     displayImage(imageUrl) {
-        const imageContainer = document.getElementById('story-image');
-        imageContainer.innerHTML = `
-            <img src="${imageUrl}" alt="物語の絵" loading="lazy">
-            <p>素敵な絵ができました！</p>
-        `;
+        console.log('displayImage呼び出し:', imageUrl);
+        
+        // picture-displayエリアに画像を表示
+        const pictureDisplay = document.getElementById('picture-display');
+        if (pictureDisplay) {
+            pictureDisplay.innerHTML = `
+                <img src="${imageUrl}" alt="物語の絵" style="max-width: 100%; height: auto; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+            `;
+            console.log('画像をpicture-displayに表示完了');
+        } else {
+            console.error('picture-display要素が見つかりません');
+        }
     }
 
     async selectChoice(choice, index) {
@@ -345,7 +696,8 @@ class StoryAgent {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    input: `ユーザーの選択: ${choice}。この選択に基づいて物語を続けてください。`
+                    input: `ユーザーの選択: ${choice}。この選択に基づいて物語を続けてください。`,
+                    session_id: this.currentSession // セッションIDを送信
                 })
             });
             
@@ -356,11 +708,18 @@ class StoryAgent {
             const data = await response.json();
             console.log('ADKエージェント応答（選択肢）:', data);
             
-            // ADKエージェントからの応答を解析して選択肢を抽出
-            const parsedStory = this.parseStoryResponse(data.result);
+            // セッションIDを保存
+            this.currentSession = data.session_id;
             
-            // 画像URLがあれば保存
-            this.extractAndSaveImageUrl(data.result);
+            // 新しいAPIレスポンス形式に対応
+            const textResult = data.text_result || data.result || '';
+            const imageUrl = data.image_url;
+            
+            console.log('テキスト結果:', textResult);
+            console.log('画像URL:', imageUrl);
+            
+            // ADKエージェントからの応答を解析して選択肢を抽出
+            const parsedStory = this.parseStoryResponse(textResult);
             
             return {
                 text: parsedStory.text || '物語が続きます...',
@@ -368,7 +727,8 @@ class StoryAgent {
                     "さらに物語を続ける",
                     "別の選択をする"
                 ],
-                image: null
+                image: imageUrl, // 新しい画像URL
+                originalResponse: textResult // 生のレスポンスを保持
             };
             
         } catch (error) {
