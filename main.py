@@ -58,9 +58,28 @@ app.mount("/src", StaticFiles(directory="src"), name="src")
 # 背景で画像生成を実行する関数
 def generate_image_task(session_id: str, page_num: int, story_text: str):
     print(f"🖼️ Background task started for Session {session_id}, Page {page_num}")
-    # simple_parallel_toolを直接呼び出す
-    from agents.StoryTelling_Agent.simple_parallel_tool import generate_story_image_parallel
-    result = generate_story_image_parallel(story_text, f"p{page_num}")
+    
+    # P3の場合は参照画像を使用
+    if page_num == 3:
+        # P2の画像URLを取得
+        if session_id in SESSIONS:
+            p2_image_url = SESSIONS[session_id]["image_urls"].get(2)
+            if p2_image_url:
+                print(f"🖼️ Using P2 image as reference for P3: {p2_image_url}")
+                from agents.StoryTelling_Agent.simple_parallel_tool import generate_story_image_with_reference
+                result = generate_story_image_with_reference(story_text, p2_image_url, "p3_with_p2_reference")
+            else:
+                print(f"⚠️ P2 image URL not found, using normal generation for P3")
+                from agents.StoryTelling_Agent.simple_parallel_tool import generate_story_image_parallel
+                result = generate_story_image_parallel(story_text, f"p{page_num}")
+        else:
+            print(f"⚠️ Session {session_id} not found, using normal generation for P3")
+            from agents.StoryTelling_Agent.simple_parallel_tool import generate_story_image_parallel
+            result = generate_story_image_parallel(story_text, f"p{page_num}")
+    else:
+        # P2の場合は通常の画像生成
+        from agents.StoryTelling_Agent.simple_parallel_tool import generate_story_image_parallel
+        result = generate_story_image_parallel(story_text, f"p{page_num}")
     
     if result and result.get("success"):
         image_url = result["images"][0].get("cloud_url")

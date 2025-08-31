@@ -4,7 +4,7 @@
 """
 
 from google.adk.agents import LlmAgent
-from .simple_parallel_tool import simple_parallel_tool
+from .simple_parallel_tool import simple_parallel_tool, reference_image_tool
 
 # メインの読み聞かせエージェント（並行処理対応）
 root_agent = LlmAgent(
@@ -36,7 +36,7 @@ root_agent = LlmAgent(
 6. **「どちらを選びますか？」「どうしますか？」などの対話的な要素は一切含めないでください**
 7. **PAGE_4、PAGE_5などの追加ページは絶対に作成しないでください**
     """,
-    tools=[simple_parallel_tool]
+    tools=[simple_parallel_tool, reference_image_tool]
 )
 
 __all__ = ["root_agent"]
