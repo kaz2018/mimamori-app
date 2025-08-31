@@ -9,6 +9,20 @@ from google.adk.runners import InMemoryRunner
 from google.genai.types import Part, UserContent
 import os
 import uvicorn
+import yaml
+
+# 環境変数の読み込み
+def load_env_files():
+    env_files = ['api_key_env.yaml', 'env.yaml']
+    for env_file in env_files:
+        if os.path.exists(env_file):
+            with open(env_file, 'r') as f:
+                env_vars = yaml.safe_load(f)
+                for key, value in env_vars.items():
+                    os.environ[key] = str(value)
+                    print(f"Loaded env var: {key}")
+
+load_env_files()
 
 app = FastAPI()
 
@@ -30,6 +44,9 @@ AGENT_MAP = {
 RUNNER_MAP = {}
 for agent_name, agent in AGENT_MAP.items():
     RUNNER_MAP[agent_name] = InMemoryRunner(agent=agent)
+
+# srcフォルダを静的ファイルとして提供
+app.mount("/src", StaticFiles(directory="src"), name="src")
 
 # ADKの標準的なWeb UIの静的ファイルを提供
 try:
@@ -123,14 +140,20 @@ async def run_agent_post(agent_name: str, request: Request):
     
     # エージェントを実行して結果を取得
     result = ""
+    print(f"Starting agent execution for {agent_name} with input: {user_input}")
     for event in runner.run(
         user_id=session.user_id, session_id=session.id, new_message=content
     ):
+        print(f"Event received: {type(event)} - {hasattr(event, 'content')}")
         if hasattr(event, 'content') and hasattr(event.content, 'parts'):
+            print(f"Event has {len(event.content.parts)} parts")
             for part in event.content.parts:
+                print(f"Part type: {type(part)} - has text: {hasattr(part, 'text')}")
                 if hasattr(part, 'text') and part.text is not None:
+                    print(f"Adding text: {part.text[:100]}...")
                     result += part.text
     
+    print(f"Final result length: {len(result)}")
     return {"result": result}
 
 @app.get("/info")
@@ -141,6 +164,9 @@ def info():
         "available_agents": list(AGENT_MAP.keys()),
         "endpoints": {
             "/": "ADK標準UI（ブラウザでアクセス）",
+            "/src/story_top.html": "読み聞かせ選択ページ（カスタムUI）",
+            "/src/story_agent.html": "読み聞かせ実行ページ（カスタムUI）",
+            "/src/index.html": "メインページ",
             "/agent/child_care": "Child Care Agent（子供見守りアプリ）",
             "/agent/storytelling": "Storytelling Agent（インタラクティブ読み聞かせ）"
         },
