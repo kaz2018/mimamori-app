@@ -56,28 +56,16 @@ for agent_name, agent in AGENT_MAP.items():
 app.mount("/src", StaticFiles(directory="src"), name="src")
 
 # 背景で画像生成を実行する関数
-def generate_image_task(session_id: str, page_num: int, story_text: str):
+def generate_image_task(session_id: str, page_num: int, story_text: str, reference_image_url: str = None):
     print(f"🖼️ Background task started for Session {session_id}, Page {page_num}")
     
-    # P3の場合は参照画像を使用
-    if page_num == 3:
-        # P2の画像URLを取得
-        if session_id in SESSIONS:
-            p2_image_url = SESSIONS[session_id]["image_urls"].get(2)
-            if p2_image_url:
-                print(f"🖼️ Using P2 image as reference for P3: {p2_image_url}")
-                from agents.StoryTelling_Agent.simple_parallel_tool import generate_story_image_with_reference
-                result = generate_story_image_with_reference(story_text, p2_image_url, "p3_with_p2_reference")
-            else:
-                print(f"⚠️ P2 image URL not found, using normal generation for P3")
-                from agents.StoryTelling_Agent.simple_parallel_tool import generate_story_image_parallel
-                result = generate_story_image_parallel(story_text, f"p{page_num}")
-        else:
-            print(f"⚠️ Session {session_id} not found, using normal generation for P3")
-            from agents.StoryTelling_Agent.simple_parallel_tool import generate_story_image_parallel
-            result = generate_story_image_parallel(story_text, f"p{page_num}")
+    # reference_image_url があれば、それを使って生成
+    if reference_image_url:
+        print(f"🖼️ Using reference image: {reference_image_url}")
+        from agents.StoryTelling_Agent.simple_parallel_tool import generate_story_image_with_reference
+        result = generate_story_image_with_reference(story_text, reference_image_url, f"p{page_num}_with_ref")
     else:
-        # P2の場合は通常の画像生成
+        # なければ通常の生成
         from agents.StoryTelling_Agent.simple_parallel_tool import generate_story_image_parallel
         result = generate_story_image_parallel(story_text, f"p{page_num}")
     
@@ -91,6 +79,12 @@ def generate_image_task(session_id: str, page_num: int, story_text: str):
             print(f"⚠️ Session {session_id} not found when saving image URL")
     else:
         print(f"❌ Image generation failed for P{page_num}")
+        # エラー時はNoneを保存して次のページに遷移できるようにする
+        if session_id in SESSIONS:
+            SESSIONS[session_id]["image_urls"][page_num] = None
+            print(f"⚠️ Setting P{page_num} image URL to None due to generation failure")
+        else:
+            print(f"⚠️ Session {session_id} not found when handling image generation failure")
 
 # ADKの標準的なWeb UIの静的ファイルを提供
 try:
@@ -265,21 +259,40 @@ async def start_story(request: Request, background_tasks: BackgroundTasks):
     }
     print(f"💾 セッションデータ保存: {session_id}")
 
-    # 4. P2の画像をバックグラウンドで先行生成
-    if 2 in pages:
-        print(f"🖼️ P2画像生成タスク開始: {session_id}")
-        background_tasks.add_task(generate_image_task, session_id, 2, pages[2])
-        print(f"✅ P2画像生成タスク登録完了")
+    # 4. P1の画像を同期的に生成
+    if 1 in pages:
+        print(f"🖼️ P1画像生成開始: {session_id}")
+        from agents.StoryTelling_Agent.simple_parallel_tool import generate_story_image_parallel
+        p1_result = generate_story_image_parallel(pages[1], "p1")
+        
+        if p1_result and p1_result.get("success"):
+            p1_image_url = p1_result["images"][0].get("cloud_url")
+            SESSIONS[session_id]["image_urls"][1] = p1_image_url
+            print(f"✅ P1画像生成完了: {p1_image_url}")
+        else:
+            print(f"❌ P1画像生成失敗")
+            p1_image_url = None
     else:
-        print(f"⚠️ P2のページが見つかりません")
+        print(f"⚠️ P1のページが見つかりません")
+        p1_image_url = None
 
     # 5. P1のテキストとセッションIDを返す
     result = {
         "session_id": session_id,
         "text_result": pages.get(1, "物語の生成に失敗しました。"),
-        "image_url": None # P1には画像はない
+        "image_url": p1_image_url
     }
     print(f"✅ レスポンス返却: session_id={session_id}, text_len={len(result['text_result'])}")
+    
+    # 6. P2の画像をバックグラウンドで先行生成
+    if 2 in pages:
+        print(f"🖼️ P2画像生成タスク開始: {session_id}")
+        # ★ p1_image_url を引数として渡すように修正
+        background_tasks.add_task(generate_image_task, session_id, 2, pages[2], p1_image_url)
+        print(f"✅ P2画像生成タスク登録完了")
+    else:
+        print(f"⚠️ P2のページが見つかりません")
+    
     return result
 
 @app.post("/agent/storytelling/next")
@@ -314,31 +327,33 @@ async def next_page(request: Request, background_tasks: BackgroundTasks):
     print(f"📊 現在の画像URL一覧: {session_data['image_urls']}")
     
     # 画像URLがない場合は、少し待ってから再確認
-    if not image_url and current_page_num > 1:
+    if not image_url:
         import asyncio
         print(f"⏳ P{current_page_num}の画像URLを待機中...")
-        # 最大30秒まで待機（5秒ずつ6回）
-        for i in range(6):
-            await asyncio.sleep(5)
+        # 最大15秒まで待機（3秒ずつ5回）
+        for i in range(5):
+            await asyncio.sleep(3)
             image_url = session_data["image_urls"].get(current_page_num)
             if image_url:
                 print(f"✅ P{current_page_num}の画像URL取得: {image_url}")
                 break
             else:
-                print(f"⏳ P{current_page_num}の画像URL待機中... ({i+1}/6)")
+                print(f"⏳ P{current_page_num}の画像URL待機中... ({i+1}/5)")
         
         if not image_url:
-            print(f"⚠️ P{current_page_num}の画像URLが取得できませんでした")
+            print(f"⚠️ P{current_page_num}の画像URLが取得できませんでした（画像なしで続行）")
 
-    # さらに次のページ（P3）があれば、その画像をバックグラウンドで先行生成
+    # さらに次のページがあれば、その画像をバックグラウンドで先行生成
     next_page_to_preload = current_page_num + 1
     if next_page_to_preload in session_data["story_pages"]:
         print(f"🖼️ P{next_page_to_preload}画像生成タスク開始: {session_id}")
+        # ★ このターンの画像URL (image_url) を引数として渡すように修正
         background_tasks.add_task(
             generate_image_task, 
             session_id, 
             next_page_to_preload, 
-            session_data["story_pages"][next_page_to_preload]
+            session_data["story_pages"][next_page_to_preload],
+            image_url 
         )
         print(f"✅ P{next_page_to_preload}画像生成タスク登録完了")
     else:

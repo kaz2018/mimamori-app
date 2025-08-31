@@ -362,18 +362,14 @@ class StoryAgent {
         // 画像表示の処理
         let imageUrlToDisplay = null;
         
-        if (this.pageCount === 2 && storyData.image) {
-            // P2では画像を表示
-            imageUrlToDisplay = storyData.image;
-            console.log('P2の画像URLを表示:', imageUrlToDisplay);
-        } else if (this.pageCount === 3 && storyData.image) {
-            // P3では画像を表示
-            imageUrlToDisplay = storyData.image;
-            console.log('P3の画像URLを表示:', imageUrlToDisplay);
+        if (storyData.image_url) {
+            // APIレスポンスのimage_urlフィールドを使用
+            imageUrlToDisplay = storyData.image_url;
+            console.log(`P${this.pageCount}の画像URLを表示:`, imageUrlToDisplay);
         } else if (storyData.image) {
-            // 通常の画像表示（P1など）
+            // フォールバック: imageフィールドもチェック
             imageUrlToDisplay = storyData.image;
-            console.log('通常の画像URLを表示:', imageUrlToDisplay);
+            console.log(`P${this.pageCount}の画像URLを表示（フォールバック）:`, imageUrlToDisplay);
         }
         
         // 画像を表示
@@ -538,18 +534,19 @@ class StoryAgent {
         // choicesに何か（"物語を続ける"）が入っている場合は、「続きを読む」ボタンを表示
         const continueBtn = document.createElement('button');
         continueBtn.className = 'choice-btn';
-        continueBtn.textContent = '📖 続きを読む';
-        continueBtn.id = 'continue-btn'; // IDを追加
+        // ★ IDを追加して、後からボタンを特定できるようにする
+        continueBtn.id = 'continue-btn'; 
         
-        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-        // ここが最重要ポイント！
-        // クリックされたら、新しいAPIを呼び出すcontinueStory()に直接つなぐ
+        // ★ 最初は必ず非活性状態で表示
+        continueBtn.textContent = '⏳ 画像を準備中...';
+        continueBtn.disabled = true;
+        continueBtn.style.opacity = '0.6';
+        
         continueBtn.onclick = () => this.continueStory();
-        // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
         
         choicesContainer.appendChild(continueBtn);
         
-        // 画像生成状況の監視を開始
+        // ★ 画像生成状況の監視を開始する関数を呼び出す
         this.startImageStatusMonitoring();
     }
     
@@ -559,14 +556,11 @@ class StoryAgent {
             return;
         }
         
-        console.log('🔄 画像生成状況の監視を開始');
+        console.log(`🔄 画像生成状況の監視を開始 - 対象: P${this.pageCount + 1}`);
         
         // 既存のインターバルをクリア
-        if (this.imageStatusInterval) {
-            clearInterval(this.imageStatusInterval);
-        }
+        this.stopImageStatusMonitoring();
         
-        // 3秒ごとに画像生成状況をチェック
         this.imageStatusInterval = setInterval(async () => {
             try {
                 const response = await fetch(`${this.apiBaseUrl}/agent/storytelling/image-status/${this.currentSession}`);
@@ -575,30 +569,26 @@ class StoryAgent {
                     console.log('📊 画像生成状況:', data);
                     
                     const continueBtn = document.getElementById('continue-btn');
-                    if (continueBtn) {
-                        if (data.has_next_image) {
-                            // 画像が生成完了
-                            continueBtn.disabled = false;
-                            continueBtn.textContent = '📖 続きを読む';
-                            continueBtn.style.opacity = '1';
-                            console.log('✅ 次のページの画像が準備完了');
-                            clearInterval(this.imageStatusInterval);
-                        } else {
-                            // 画像生成中
-                            continueBtn.disabled = true;
-                            continueBtn.textContent = '⏳ 画像を準備中...';
-                            continueBtn.style.opacity = '0.6';
-                            console.log('⏳ 次のページの画像を生成中...');
-                        }
+                    if (continueBtn && data.has_next_image) {
+                        // 画像が生成完了したら、ポーリングを停止してボタンを活性化
+                        console.log('✅ 次のページの画像が準備完了');
+                        this.stopImageStatusMonitoring();
+                        continueBtn.disabled = false;
+                        continueBtn.textContent = '📖 続きを読む';
+                        continueBtn.style.opacity = '1';
                     }
+                } else {
+                    // APIエラー時もポーリングを停止
+                    this.stopImageStatusMonitoring();
                 }
             } catch (error) {
                 console.error('❌ 画像生成状況の取得に失敗:', error);
+                this.stopImageStatusMonitoring();
             }
         }, 3000); // 3秒ごとにチェック
     }
     
-    // 画像生成状況の監視を停止
+    // 画像生成状況の監視を停止する関数
     stopImageStatusMonitoring() {
         if (this.imageStatusInterval) {
             clearInterval(this.imageStatusInterval);
@@ -608,6 +598,9 @@ class StoryAgent {
     }
     
     async continueStory() {
+        // 進行中の画像監視を停止
+        this.stopImageStatusMonitoring();
+
         // ページ制限チェック
         if (this.pageCount >= this.maxPages) {
             console.log('最大ページ数に達しました');

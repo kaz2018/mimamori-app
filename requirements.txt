@@ -69,8 +69,8 @@ markdown==3.8.2
 # Security
 # cryptography>=41.0.0
 
-# Image Processing (必要に応じて)
-pillow>=10.1.0
+# Image Processing
+pillow==11.3.0
 
 # PDF Processing
 PyPDF2>=3.0.0
