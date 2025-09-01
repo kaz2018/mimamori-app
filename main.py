@@ -373,6 +373,36 @@ async def next_page(request: Request, background_tasks: BackgroundTasks):
     print(f"✅ レスポンス返却: session_id={session_id}, text_len={len(text_result)}")
     return result
 
+@app.post("/agent/storytelling/generate-audio")
+async def generate_audio(request: Request):
+    """ストーリーテキストを音声に変換"""
+    data = await request.json()
+    text = data.get("text", "")
+    language = data.get("language", "ja")
+    
+    if not text:
+        raise HTTPException(status_code=400, detail="Text is required")
+    
+    print(f"🎤 音声生成リクエスト: {text[:50]}...")
+    
+    try:
+        from agents.StoryTelling_Agent.tts_tool import generate_story_audio
+        result = generate_story_audio(text, language)
+        
+        if result and result.get("success"):
+            audio_url = result["audio"]["cloud_url"]
+            return {
+                "success": True,
+                "audio_url": audio_url,
+                "message": "音声生成完了"
+            }
+        else:
+            raise HTTPException(status_code=500, detail="Audio generation failed")
+            
+    except Exception as e:
+        print(f"❌ 音声生成エラー: {e}")
+        raise HTTPException(status_code=500, detail=f"Audio generation error: {str(e)}")
+
 @app.get("/agent/storytelling/image-status/{session_id}")
 async def get_image_status(session_id: str):
     """指定されたセッションの画像生成状況を取得"""
@@ -394,6 +424,8 @@ async def get_image_status(session_id: str):
         "has_next_image": has_next_image,
         "image_urls": image_urls
     }
+
+
 
 @app.get("/info")
 def info():

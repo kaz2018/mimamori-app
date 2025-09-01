@@ -18,6 +18,9 @@ google-cloud-aiplatform==1.95.1
 google-generativeai==0.8.5
 # vertexai==1.71.1  # 必要に応じて後で追加
 
+# Text-to-Speech
+gTTS==2.5.1
+
 # Google Agent Development Kit
 google-adk==1.7.0
 

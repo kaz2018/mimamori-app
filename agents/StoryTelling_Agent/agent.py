@@ -5,6 +5,7 @@
 
 from google.adk.agents import LlmAgent
 from .simple_parallel_tool import simple_parallel_tool, reference_image_tool
+from .tts_tool import tts_tool
 
 # メインの読み聞かせエージェント（並行処理対応）
 root_agent = LlmAgent(
@@ -35,8 +36,10 @@ root_agent = LlmAgent(
 5. **選択肢や質問は絶対に含めないでください。物語の文章のみを生成してください**
 6. **「どちらを選びますか？」「どうしますか？」などの対話的な要素は一切含めないでください**
 7. **PAGE_4、PAGE_5などの追加ページは絶対に作成しないでください**
+
+
     """,
-    tools=[simple_parallel_tool, reference_image_tool]
+    tools=[simple_parallel_tool, reference_image_tool, tts_tool]
 )
 
 __all__ = ["root_agent"]

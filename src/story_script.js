@@ -861,6 +861,73 @@ class StoryAgent {
     }
 
     readStoryText(text) {
+        // Text-to-Speech APIを呼び出して音声を生成・再生
+        this.generateAndPlayAudio(text);
+    }
+    
+    async generateAndPlayAudio(text) {
+        try {
+            console.log('🎤 音声生成開始');
+            
+            // TTS APIを呼び出し
+            const response = await fetch(`${this.apiBaseUrl}/agent/storytelling/generate-audio`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    text: text,
+                    language: 'ja'
+                })
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success && data.audio_url) {
+                    console.log('🎵 音声再生開始:', data.audio_url);
+                    this.playAudio(data.audio_url);
+                } else {
+                    console.log('⚠️ 音声生成に失敗、ブラウザ音声合成を使用');
+                    this.fallbackSpeechSynthesis(text);
+                }
+            } else {
+                console.log('⚠️ TTS APIエラー、ブラウザ音声合成を使用');
+                this.fallbackSpeechSynthesis(text);
+            }
+        } catch (error) {
+            console.error('❌ 音声生成エラー:', error);
+            console.log('⚠️ ブラウザ音声合成を使用');
+            this.fallbackSpeechSynthesis(text);
+        }
+    }
+    
+    playAudio(audioUrl) {
+        const audio = new Audio(audioUrl);
+        audio.onloadstart = () => console.log('🎵 音声読み込み開始');
+        audio.oncanplay = () => console.log('🎵 音声再生可能');
+        audio.onplay = () => {
+            console.log('🎵 音声再生開始');
+            this.isReading = true;
+            this.updateReadAloudButton();
+        };
+        audio.onended = () => {
+            console.log('🎵 音声再生終了');
+            this.isReading = false;
+            this.updateReadAloudButton();
+        };
+        audio.onerror = (e) => {
+            console.error('❌ 音声再生エラー:', e);
+            console.log('⚠️ ブラウザ音声合成を使用');
+        };
+        
+        audio.play().catch(error => {
+            console.error('❌ 音声再生失敗:', error);
+            console.log('⚠️ ブラウザ音声合成を使用');
+        });
+    }
+    
+    fallbackSpeechSynthesis(text) {
+        // ブラウザの音声合成APIを使用（フォールバック）
         if (this.speechSynthesis && !this.isReading) {
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'ja-JP';
