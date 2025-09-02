@@ -292,6 +292,10 @@ yarn-error.log*
 *.png
 !src/img/*.png
 
+# imgフォルダ全体を除外
+img/
+src/img/
+
 # プロトタイプ/デモ用ディレクトリ
 moc/
 

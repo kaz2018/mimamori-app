@@ -282,22 +282,22 @@ body {
 
 .feature-card .game {
     padding-top: 200px;
-            background: var(--dark-pink) url("/src/img/icon-hand.png") no-repeat top center;
+    background: var(--dark-pink) url("img/icon-hand.png") no-repeat top center;
 }
 
 .feature-card .read {
     padding-top: 200px;
-            background: var(--dark-pink) url("/src/img/icon-read.png") no-repeat top center;
+    background: var(--dark-pink) url("img/icon-read.png") no-repeat top center;
 }
 
 .feature-card .book {
     padding-top: 200px;
-            background: var(--dark-pink) url("/src/img/icon-book.png") no-repeat top center;
+    background: var(--dark-pink) url("img/icon-book.png") no-repeat top center;
 }
 
 .feature-card .stamp {
     padding-top: 200px;
-            background: var(--dark-pink) url("/src/img/icon-stamp.png") no-repeat top center;
+    background: var(--dark-pink) url("img/icon-stamp.png") no-repeat top center;
 }
 
 .feature-card ul {
@@ -475,7 +475,7 @@ footer {
 
 @media (max-width: 768px) {
     .features-img img{
-        width: 660px;
+        width: 100%;
 }
     .hero-content {
         grid-template-columns: 1fr;
