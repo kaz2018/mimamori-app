@@ -98,6 +98,29 @@ ipython_config.py
 #   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
 #   This is especially recommended for binary packages to ensure reproducibility, and is more
 #   commonly ignored for libraries.
+
+# Cloud Run deployment
+deploy_to_cloud_run.sh
+cloud_run_env.yaml
+
+# Local environment files
+local_env_oauth.sh
+restore_original_auth.sh
+setup_desktop_oauth.sh
+
+# OAuth credentials (本番環境では不要)
+oauth_credentials_desktop.json
+oauth_credentials_web.json
+token.pickle
+
+# API keys (本番環境では環境変数を使用)
+api_key_env.yaml
+email_env.yaml
+env.yaml
+vertex_ai_env.yaml
+
+# Service account key (本番環境では環境変数を使用)
+service-account-key.json
 #   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
 #poetry.lock
 

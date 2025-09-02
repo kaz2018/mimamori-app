@@ -4,6 +4,7 @@ FROM python:3.11-slim
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
+ENV PORT=8080
 
 # Set work directory
 WORKDIR /app
@@ -22,11 +23,23 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the application code
 COPY . .
 
-# Make the ADK web server executable
-RUN chmod +x adk_web_server.py
+# 静的ファイルの存在確認
+RUN echo "=== 静的ファイル確認 ===" && \
+    ls -la /app/src/ && \
+    echo "=== imgディレクトリ確認 ===" && \
+    ls -la /app/src/img/ && \
+    echo "=== PNGファイル確認 ===" && \
+    find /app/src/img -name "*.png" -type f
+
+# Ensure service account key is properly placed
+RUN if [ -f "service-account-key.json" ]; then \
+        echo "Service account key found and placed correctly"; \
+    else \
+        echo "Warning: service-account-key.json not found"; \
+    fi
 
 # Expose the port
 EXPOSE 8080
 
-# Use the ADK standard web server instead of the custom FastAPI app
-CMD ["python", "adk_web_server.py"]
+# Start the FastAPI application
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]

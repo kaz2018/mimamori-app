@@ -380,9 +380,35 @@ Style requirements:
 def _upload_to_cloud_storage(file_name: str, image_data: bytes) -> str:
     """Cloud Storageへのアップロード"""
     try:
-        # 認証設定
-        credentials_path = os.path.join(os.getcwd(), "service-account-key.json")
-        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = credentials_path
+        # 認証設定 - Cloud Run環境での認証ファイルパスを修正
+        if os.path.exists("/app/service-account-key.json"):
+            credentials_path = "/app/service-account-key.json"
+        elif os.path.exists("service-account-key.json"):
+            credentials_path = os.path.join(os.getcwd(), "service-account-key.json")
+        else:
+            # 環境変数からBase64エンコードされた認証情報を使用
+            credentials_base64 = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS_BASE64')
+            if credentials_base64:
+                import base64
+                import tempfile
+                
+                # Base64デコードして一時ファイルに保存
+                credentials_json = base64.b64decode(credentials_base64).decode('utf-8')
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+                    f.write(credentials_json)
+                    credentials_path = f.name
+                print(f"🔑 一時的な認証ファイルを作成: {credentials_path}")
+            else:
+                # デフォルトの認証方法を使用（Cloud Run環境での自動認証）
+                print("🔑 Cloud Run環境での自動認証を使用")
+                credentials_path = None
+        
+        if credentials_path:
+            os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = credentials_path
+        else:
+            # Cloud Run環境での自動認証を使用する場合、環境変数をクリア
+            if 'GOOGLE_APPLICATION_CREDENTIALS' in os.environ:
+                del os.environ['GOOGLE_APPLICATION_CREDENTIALS']
         
         # Cloud Storage クライアント
         client = storage.Client()

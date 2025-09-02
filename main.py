@@ -1,7 +1,8 @@
 from fastapi import FastAPI, Request, HTTPException, Query, BackgroundTasks
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from pathlib import Path
 
 from agents.Child_Care_Agent import root_agent as child_care_agent
 from agents.StoryTelling_Agent import root_agent as storytelling_agent
@@ -14,6 +15,11 @@ import uvicorn
 import yaml
 
 # ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+# このファイル(main.py)の場所を基準に、静的ファイルディレクトリの絶対パスを定義
+BASE_DIR = Path(__file__).resolve().parent
+STATIC_DIR = BASE_DIR / "src"
+# ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+
 # セッション全体のデータを保存する辞書
 SESSIONS = {}
 # ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
@@ -52,8 +58,66 @@ RUNNER_MAP = {}
 for agent_name, agent in AGENT_MAP.items():
     RUNNER_MAP[agent_name] = InMemoryRunner(agent=agent)
 
-# srcフォルダを静的ファイルとして提供
-app.mount("/src", StaticFiles(directory="src"), name="src")
+# srcフォルダを静的ファイルとして提供（絶対パスで指定）
+print(f"📁 Static files directory: {STATIC_DIR}")
+print(f"📁 Static files directory exists: {STATIC_DIR.exists()}")
+print(f"📁 Static files directory contents: {list(STATIC_DIR.iterdir()) if STATIC_DIR.exists() else 'Directory not found'}")
+
+# 静的ファイルの配信を確実にする
+try:
+    app.mount("/src", StaticFiles(directory=STATIC_DIR), name="src")
+    print("✅ 静的ファイルマウント成功: /src")
+except Exception as e:
+    print(f"❌ 静的ファイルマウント失敗: {e}")
+
+# フォールバック: 個別のファイルを提供（静的ファイルマウントが失敗した場合の保険）
+@app.get("/src/{file_path:path}")
+async def serve_static_file(file_path: str):
+    file_full_path = STATIC_DIR / file_path
+    print(f"🔍 ファイル要求: {file_path} -> {file_full_path}")
+    print(f"🔍 ファイル存在: {file_full_path.exists()}")
+    
+    if file_full_path.exists():
+        print(f"✅ ファイル配信成功: {file_path}")
+        return FileResponse(file_full_path)
+    else:
+        print(f"❌ ファイルが見つかりません: {file_path}")
+        raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
+
+# ルートパスで静的ファイルを提供（こちらも絶対パスで指定）
+@app.get("/")
+async def root():
+    index_path = STATIC_DIR / "index.html"
+    print(f"📄 Serving index.html from: {index_path}")
+    print(f"📄 index.html exists: {index_path.exists()}")
+    return FileResponse(index_path)
+
+# 静的ファイルの存在確認用エンドポイント
+@app.get("/health/static-files")
+async def check_static_files():
+    """静的ファイルの存在確認"""
+    img_dir = STATIC_DIR / "img"
+    img_files = []
+    if img_dir.exists():
+        for file_path in img_dir.iterdir():
+            img_files.append({
+                "name": file_path.name,
+                "exists": file_path.exists(),
+                "size": file_path.stat().st_size if file_path.exists() else 0,
+                "is_file": file_path.is_file(),
+                "is_dir": file_path.is_dir()
+            })
+    
+    static_files = {
+        "base_dir": str(BASE_DIR),
+        "static_dir": str(STATIC_DIR),
+        "static_dir_exists": STATIC_DIR.exists(),
+        "index_html_exists": (STATIC_DIR / "index.html").exists(),
+        "img_dir_exists": img_dir.exists(),
+        "img_dir_path": str(img_dir),
+        "img_files": img_files
+    }
+    return static_files
 
 # 背景で画像生成を実行する関数
 def generate_image_task(session_id: str, page_num: int, story_text: str, reference_image_url: str = None):
@@ -198,13 +262,18 @@ async def run_agent_get(agent_name: str, input: str = Query(None, description="�
     
     # エージェントを実行して結果を取得
     result = ""
-    for event in runner.run(
-        user_id=session.user_id, session_id=session.id, new_message=content
-    ):
-        if hasattr(event, 'content') and hasattr(event.content, 'parts'):
-            for part in event.content.parts:
-                if hasattr(part, 'text') and part.text is not None:
-                    result += part.text
+    try:
+        # Cloud Run環境でのADK実行を安全に行う
+        for event in runner.run(
+            user_id=session.user_id, session_id=session.id, new_message=content
+        ):
+            if hasattr(event, 'content') and hasattr(event.content, 'parts'):
+                for part in event.content.parts:
+                    if hasattr(part, 'text') and part.text is not None:
+                        result += part.text
+    except Exception as e:
+        print(f"❌ ADKエージェント実行エラー: {e}")
+        result = f"エージェントの実行中にエラーが発生しました: {str(e)}"
     
     return {"result": result}
 
@@ -225,11 +294,26 @@ async def start_story(request: Request, background_tasks: BackgroundTasks):
     # 1. エージェントを一度だけ呼び出し、3ページ分の物語を取得
     full_story_text = ""
     content = UserContent(parts=[Part(text=topic)])
-    for event in runner.run(user_id=session.user_id, session_id=session_id, new_message=content):
-        if hasattr(event, 'content'):
-            for part in event.content.parts:
-                if hasattr(part, 'text'):
-                    full_story_text += part.text
+    try:
+        # Cloud Run環境でのADK実行を安全に行う
+        for event in runner.run(user_id=session.user_id, session_id=session_id, new_message=content):
+            if hasattr(event, 'content'):
+                for part in event.content.parts:
+                    if hasattr(part, 'text'):
+                        full_story_text += part.text
+    except Exception as e:
+        print(f"❌ ストーリーテリングADKエージェント実行エラー: {e}")
+        # エラー時はデフォルトのストーリーを返す
+        full_story_text = """
+        [PAGE_1]
+        深い森の奥に、ふわふわの毛を持つ小さなうさぎのピョンが住んでいました。ピョンはいつも元気いっぱいで、ぴょんぴょん跳ねるのが大好きでした。
+        
+        [PAGE_2]
+        ある晴れた朝、ピョンはいつものようにタンポポの綿毛を追いかけて遊んでいました。その日は特別に暖かく、森の仲間たちもみんな楽しそうに過ごしていました。
+        
+        [PAGE_3]
+        ピョンは、もっと遠くまで探検してみたいと、ワクワクしながら森の奥へと歩き始めました。新しい冒険が始まろうとしていました。
+        """
     
     print(f"📝 生成された物語テキスト: {full_story_text[:200]}...")
     

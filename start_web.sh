@@ -13,7 +13,7 @@ if lsof -Pi :8000 -sTCP:LISTEN -t >/dev/null ; then
 fi
 
 cd "$(dirname "$0")" || exit 1
-source venv/bin/activate
+source new_venv/bin/activate
 export GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/service-account-key.json"
 
 echo "🚀 FastAPI Webサーバーを起動中..."

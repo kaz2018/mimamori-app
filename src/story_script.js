@@ -387,6 +387,27 @@ class StoryAgent {
         
         console.log('=== displayStory 完了 ===');
         
+        // ストーリー表示完了後にスクロール位置を一番上に移動
+        setTimeout(() => {
+            try {
+                // 複数のスクロール方法を試行
+                if (window.scrollTo) {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    console.log('📜 displayStory完了後にスクロール位置を一番上に移動 (scrollTo)');
+                } else if (document.documentElement.scrollTop !== undefined) {
+                    document.documentElement.scrollTop = 0;
+                    console.log('📜 displayStory完了後にスクロール位置を一番上に移動 (documentElement)');
+                } else if (document.body.scrollTop !== undefined) {
+                    document.body.scrollTop = 0;
+                    console.log('📜 displayStory完了後にスクロール位置を一番上に移動 (body)');
+                }
+            } catch (error) {
+                console.warn('スクロール処理でエラーが発生:', error);
+                // フォールバック: 即座にスクロール
+                window.scrollTo(0, 0);
+            }
+        }, 200); // 200ms待ってから実行
+        
         // 自動読み上げ（オプション）
         this.readStoryText(storyData.text);
     }
@@ -618,6 +639,28 @@ class StoryAgent {
             const response = await this.callStoryAgentNext();
             
             this.displayStory(response);
+            
+            // ページめくり時にスクロール位置を一番上に移動（より確実な方法）
+            setTimeout(() => {
+                try {
+                    // 複数のスクロール方法を試行
+                    if (window.scrollTo) {
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                        console.log('📜 スクロール位置を一番上に移動 (scrollTo)');
+                    } else if (document.documentElement.scrollTop !== undefined) {
+                        document.documentElement.scrollTop = 0;
+                        console.log('📜 スクロール位置を一番上に移動 (documentElement)');
+                    } else if (document.body.scrollTop !== undefined) {
+                        document.body.scrollTop = 0;
+                        console.log('📜 スクロール位置を一番上に移動 (body)');
+                    }
+                } catch (error) {
+                    console.warn('スクロール処理でエラーが発生:', error);
+                    // フォールバック: 即座にスクロール
+                    window.scrollTo(0, 0);
+                }
+            }, 100); // 100ms待ってから実行
+            
         } catch (error) {
             console.error('Story continuation failed:', error);
             this.showError('お話の続きに失敗しました。');
@@ -673,6 +716,28 @@ class StoryAgent {
             // 選択した内容を次のストーリーに送信
             const response = await this.sendChoice(choice, index);
             this.displayStory(response);
+            
+            // 選択肢選択時にスクロール位置を一番上に移動（より確実な方法）
+            setTimeout(() => {
+                try {
+                    // 複数のスクロール方法を試行
+                    if (window.scrollTo) {
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                        console.log('📜 選択肢選択時にスクロール位置を一番上に移動 (scrollTo)');
+                    } else if (document.documentElement.scrollTop !== undefined) {
+                        document.documentElement.scrollTop = 0;
+                        console.log('📜 選択肢選択時にスクロール位置を一番上に移動 (documentElement)');
+                    } else if (document.body.scrollTop !== undefined) {
+                        document.body.scrollTop = 0;
+                        console.log('📜 選択肢選択時にスクロール位置を一番上に移動 (body)');
+                    }
+                } catch (error) {
+                    console.warn('スクロール処理でエラーが発生:', error);
+                    // フォールバック: 即座にスクロール
+                    window.scrollTo(0, 0);
+                }
+            }, 100); // 100ms待ってから実行
+            
         } catch (error) {
             console.error('Choice processing failed:', error);
             this.showError('選択の処理に失敗しました。');
