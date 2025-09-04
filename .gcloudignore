@@ -1,0 +1,24 @@
+# .gcloudignore file
+# 静的ファイルを除外しないように設定
+
+# 除外するファイル/ディレクトリ
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.env
+*.log
+.DS_Store
+.vscode/
+.idea/
+
+# 静的ファイルは除外しない（重要！）
+!src/
+!src/img/
+!src/img/*.png
+!src/img/*.jpg
+!src/img/*.gif
+!src/img/*.svg

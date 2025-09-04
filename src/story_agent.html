@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>みまもりうさぎの読み聞かせ</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="story_styles.css">
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <h1>みまもりうさぎの読み聞かせ</h1>
+        </div>
+        <nav class="navbar">
+            <button onclick="goHome()">ホーム</button>
+            <p class="nav-links"><a href="index.html">メニュー</a></p>
+        </nav>
+    </header>
+
+    <main>
+
+        <!-- Story Display Section -->
+        <section id="story-section" class="story-section picturebook hidden">
+            <!-- 上部画像エリア -->
+            <div class="picture-area" id="picture-area">
+                <div class="picture-display" id="picture-display">
+                    <div class="picture-loading">
+                        <div class="loading-spinner"></div>
+                        <p>絵を準備中...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 下部テキストエリア -->
+            <div class="story-container">
+                <div class="story-content">
+                    <div id="story-text" class="story-text"></div>
+                    <div id="story-choices" class="story-choices"></div>
+                    <div id="story-image" class="story-image"></div>
+                </div>
+                <div class="story-controls">
+                    <button id="new-story-btn" class="control-btn" onclick="newStory()">
+                        <span class="icon">🔄</span>
+                        新しいお話
+                    </button>
+                    <button id="read-aloud-btn" class="control-btn" onclick="toggleReadAloud()">
+                        <span class="icon">🔊</span>
+                        読み上げ
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Loading Section -->
+        <section id="loading-section" class="loading-section">
+            <div class="loading-container">
+                <div class="loading-rabbit">
+                    <img src="/src/img/mimamori.png" alt="みまもりちゃん" class="rabbit-image bouncing" style="width: 150px; height: 150px; object-fit: contain;">
+                </div>
+                <p class="loading-text">お話を準備しています...</p>
+                <div class="loading-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Help Section -->
+        <section id="help" class="help-section">
+            <div class="help-container">
+                <h2>使い方</h2>
+                <div class="help-steps">
+                    <div class="help-step">
+                        <div class="step-number">1</div>
+                        <h3>お話の種類を選ぼう</h3>
+                        <p>動物のお話、冒険のお話、魔法のお話から好きなものを選んでね</p>
+                    </div>
+                    <div class="help-step">
+                        <div class="step-number">2</div>
+                        <h3>選択肢を選ぼう</h3>
+                        <p>お話の途中で出てくる選択肢をクリックして、物語を進めよう</p>
+                    </div>
+                    <div class="help-step">
+                        <div class="step-number">3</div>
+                        <h3>素敵な絵を見よう</h3>
+                        <p>お話の最後に、とっても綺麗な絵が出てくるよ</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="footer-content">
+            <p>&copy; 2025 みまもりうさぎ. All rights reserved.</p>
+            <ul class="footer-links">
+                <li><a href="#">プライバシーポリシー</a></li>
+                <li><a href="#">利用規約</a></li>
+                <li><a href="#">お問い合わせ</a></li>
+            </ul>
+        </div>
+    </footer>
+
+    <script src="story_script.js"></script>
+</body>
+</html>

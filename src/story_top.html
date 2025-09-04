@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>みまもりうさぎの読み聞かせ</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="story_styles.css">
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <h1><a href="index.html">みまもりうさぎの読み聞かせ</a></h1>
+        </div>
+        <nav class="navbar">
+            <button onclick="goHome()">ホーム</button>
+            <p class="nav-links"><a href="index.html">メニュー</a></p>
+        </nav>
+    </header>
+
+    <main>
+        <!-- Story Selection Section -->
+        <section id="features" class="features">
+            <p class="features-img"><img src="/src/img/hello-image.jpg" alt="今日はどんなお話を聞きたいかな？"></p>
+            <h2>今日はどんなお話を聞きたいかな？</h2>
+            <div class="feature-grid">
+                <div class="feature-card" onclick="selectStoryType('動物のお話')">
+                    <h3 class="feature-icon animal-story">動物のお話</h3>
+                    <p>可愛い動物たちが登場する心温まるお話</p>
+                </div>
+                <div class="feature-card" onclick="selectStoryType('冒険のお話')">
+                    <h3 class="feature-icon adventure-story">冒険のお話</h3>
+                    <p>わくわくドキドキの冒険が待っているお話</p>
+                </div>
+                <div class="feature-card" onclick="selectStoryType('魔法のお話')">
+                    <h3 class="feature-icon magic-story">魔法のお話</h3>
+                    <p>不思議で素敵な魔法の世界のお話</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="footer-content">
+            <p>&copy; 2025 みまもりちゃん. All rights reserved.</p>
+            <ul class="footer-links">
+                <li><a href="#">プライバシーポリシー</a></li>
+                <li><a href="#">利用規約</a></li>
+                <li><a href="#">お問い合わせ</a></li>
+            </ul>
+        </div>
+    </footer>
+
+    <script>
+        function goHome() {
+            window.location.href = 'index.html';
+        }
+
+        function selectStoryType(storyType) {
+            // ストーリータイプをURLパラメータとして story_agent.html に渡す
+            window.location.href = `story_agent.html?type=${encodeURIComponent(storyType)}`;
+        }
+    </script>
+</body>
+</html>
