@@ -27,11 +27,6 @@ body {
     background-color: var(--light-pink);
 }
 
-/* Header Styles - Override for story page */
-.logo h1 {
-    background: var(--light-pink) url("/src/img/icon-read.png") no-repeat left center;
-}
-
 /* Story-specific feature cards */
 .feature-card .animal-story {
     padding-top: 200px;

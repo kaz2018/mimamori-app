@@ -270,6 +270,10 @@ body {
     box-shadow: 0 10px 30px var(--shadow);
 }
 
+.feature-card a {
+    text-decoration: none;
+}
+
 .feature-icon {
     font-size: 3rem;
     margin-bottom: 1rem;

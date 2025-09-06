@@ -4,17 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>みまもりうさぎの読み聞かせ</title>
-    <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="story_styles.css">
+    <link rel="stylesheet" href="/src/styles.css">
+    <link rel="stylesheet" href="/src/story_styles.css">
 </head>
 <body>
     <header>
         <div class="logo">
-            <h1><a href="index.html">みまもりうさぎの読み聞かせ</a></h1>
+            <h1><a href="/src/index.html">みまもりうさぎの読み聞かせ</a></h1>
         </div>
         <nav class="navbar">
             <button onclick="goHome()">ホーム</button>
-            <p class="nav-links"><a href="index.html">メニュー</a></p>
+            <p class="nav-links"><a href="/src/index.html">メニュー</a></p>
         </nav>
     </header>
 
@@ -53,12 +53,12 @@
 
     <script>
         function goHome() {
-            window.location.href = 'index.html';
+            window.location.href = '/src/index.html';
         }
 
         function selectStoryType(storyType) {
             // ストーリータイプをURLパラメータとして story_agent.html に渡す
-            window.location.href = `story_agent.html?type=${encodeURIComponent(storyType)}`;
+            window.location.href = `/src/story_agent.html?type=${encodeURIComponent(storyType)}`;
         }
     </script>
 </body>

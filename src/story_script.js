@@ -5,6 +5,7 @@ class StoryAgent {
         this.isLoading = false;
         this.speechSynthesis = window.speechSynthesis;
         this.isReading = false;
+        this.currentAudio = null; // 現在再生中の音声ファイル
         this.apiBaseUrl = window.location.origin; // ADK APIのベースURL
         this.pageCount = 0; // ページカウンター追加
         this.maxPages = 3; // 最大3ページ
@@ -71,6 +72,9 @@ class StoryAgent {
     async startStory(storyType) {
         // 既存の画像生成状況の監視を停止
         this.stopImageStatusMonitoring();
+        
+        // 現在の読み上げを停止
+        this.stopReading();
         
         this.pageCount = 1; // P1から開始
         console.log('新しいストーリー開始 - P1');
@@ -351,6 +355,9 @@ class StoryAgent {
         console.log('=== displayStory 開始 ===');
         console.log('受信したストーリーデータ:', storyData);
         
+        // 現在の読み上げを停止
+        this.stopReading();
+        
         this.isLoading = false;
         document.getElementById('loading-section').classList.add('hidden');
         document.getElementById('story-section').classList.remove('hidden');
@@ -622,6 +629,9 @@ class StoryAgent {
         // 進行中の画像監視を停止
         this.stopImageStatusMonitoring();
 
+        // 現在の読み上げを停止
+        this.stopReading();
+
         // ページ制限チェック
         if (this.pageCount >= this.maxPages) {
             console.log('最大ページ数に達しました');
@@ -709,6 +719,9 @@ class StoryAgent {
             this.newStory();
             return;
         }
+        
+        // 現在の読み上げを停止
+        this.stopReading();
         
         this.showLoading();
         
@@ -967,7 +980,15 @@ class StoryAgent {
     }
     
     playAudio(audioUrl) {
+        // 既存の音声を停止
+        if (this.currentAudio) {
+            this.currentAudio.pause();
+            this.currentAudio.currentTime = 0;
+        }
+        
         const audio = new Audio(audioUrl);
+        this.currentAudio = audio; // 現在の音声を保持
+        
         audio.onloadstart = () => console.log('🎵 音声読み込み開始');
         audio.oncanplay = () => console.log('🎵 音声再生可能');
         audio.onplay = () => {
@@ -978,16 +999,28 @@ class StoryAgent {
         audio.onended = () => {
             console.log('🎵 音声再生終了');
             this.isReading = false;
+            this.currentAudio = null;
             this.updateReadAloudButton();
         };
         audio.onerror = (e) => {
             console.error('❌ 音声再生エラー:', e);
             console.log('⚠️ ブラウザ音声合成を使用');
+            this.isReading = false;
+            this.currentAudio = null;
+            this.updateReadAloudButton();
+        };
+        audio.onpause = () => {
+            console.log('🎵 音声一時停止');
+            this.isReading = false;
+            this.updateReadAloudButton();
         };
         
         audio.play().catch(error => {
             console.error('❌ 音声再生失敗:', error);
             console.log('⚠️ ブラウザ音声合成を使用');
+            this.isReading = false;
+            this.currentAudio = null;
+            this.updateReadAloudButton();
         });
     }
     
@@ -1012,8 +1045,8 @@ class StoryAgent {
 
     toggleReadAloud() {
         if (this.isReading) {
-            this.speechSynthesis.cancel();
-            this.isReading = false;
+            // 音声を停止する場合は、stopReading()を使用
+            this.stopReading();
         } else {
             const storyText = document.getElementById('story-text').textContent;
             if (storyText) {
@@ -1021,6 +1054,28 @@ class StoryAgent {
             }
         }
         this.updateReadAloudButton();
+    }
+
+    stopReading() {
+        console.log('🔇 読み上げ停止処理開始 - isReading:', this.isReading, 'currentAudio:', !!this.currentAudio);
+        
+        // ブラウザ音声合成を停止
+        if (this.speechSynthesis) {
+            this.speechSynthesis.cancel();
+            console.log('🔇 ブラウザ音声合成を停止');
+        }
+        
+        // 現在再生中の音声ファイルを停止
+        if (this.currentAudio) {
+            this.currentAudio.pause();
+            this.currentAudio.currentTime = 0;
+            this.currentAudio = null;
+            console.log('🔇 音声ファイルを停止');
+        }
+        
+        this.isReading = false;
+        this.updateReadAloudButton();
+        console.log('🔇 読み上げを停止しました');
     }
 
     updateReadAloudButton() {
@@ -1041,7 +1096,7 @@ class StoryAgent {
         this.isReading = false;
         this.lastImageUrl = null; // 画像URLをクリア
         
-        window.location.href = 'story_top.html';
+        window.location.href = '/src/story_top.html';
     }
 
     showError(message) {
@@ -1053,7 +1108,7 @@ class StoryAgent {
 
 // Global functions for onclick handlers
 function goHome() {
-    window.location.href = 'story_top.html';
+    window.location.href = '/src/story_top.html';
 }
 
 function startStory(storyType) {
