@@ -3,50 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>みまもりうさぎの読み聞かせ</title>
+    <title>まもりんの読み聞かせ</title>
     <link rel="stylesheet" href="/src/styles.css">
-    <link rel="stylesheet" href="/src/story_styles.css">
 </head>
 <body>
     <header>
         <div class="logo">
-            <h1><a href="/src/index.html">みまもりうさぎの読み聞かせ</a></h1>
+            <h1><a href="/">まもりんの読み聞かせ</a></h1>
         </div>
-        <nav class="navbar">
-            <button onclick="goHome()">ホーム</button>
-            <p class="nav-links"><a href="/src/index.html">メニュー</a></p>
-        </nav>
+        <div class="choice-btn">
+            <button class="blue-btn" onclick="hoge">あお</button>
+            <button class="pink-btn" onclick="fuga">ピンク</button>
+        </div>
     </header>
 
     <main>
         <!-- Story Selection Section -->
         <section id="features" class="features">
             <p class="features-img"><img src="/src/img/hello-image.jpg" alt="今日はどんなお話を聞きたいかな？"></p>
-            <h2>今日はどんなお話を聞きたいかな？</h2>
             <div class="feature-grid">
                 <div class="feature-card" onclick="selectStoryType('動物のお話')">
-                    <h3 class="feature-icon animal-story">動物のお話</h3>
-                    <p>可愛い動物たちが登場する心温まるお話</p>
+                    <h3 class="feature-icon animal">どうぶつ</h3>
+                    <p>かわいいどうぶつたちがででくるおはなし</p>
                 </div>
                 <div class="feature-card" onclick="selectStoryType('冒険のお話')">
-                    <h3 class="feature-icon adventure-story">冒険のお話</h3>
-                    <p>わくわくドキドキの冒険が待っているお話</p>
+                    <h3 class="feature-icon adventure">ぼうけん</h3>
+                    <p>わくわくドキドキのぼうけんが待っているおはなし</p>
                 </div>
-                <div class="feature-card" onclick="selectStoryType('魔法のお話')">
-                    <h3 class="feature-icon magic-story">魔法のお話</h3>
-                    <p>不思議で素敵な魔法の世界のお話</p>
+                <div class="feature-card" onclick="selectStoryType('おひめさまのお話')">
+                    <h3 class="feature-icon princess">おひめさま</h3>
+                    <p>きれいなおひめさまのステキなおはなし</p>
                 </div>
-            </div>
+                <div class="feature-card" onclick="selectStoryType('乗り物のお話')">
+                    <h3 class="feature-icon vehicle">のりもの</h3>
+                    <p>はやくてかっこいいのりもののおはなし</p>
+                </div>
+                <div class="make">
+                    <div class="input-group">
+                        <input type="text" id="custom-story-input" value="" placeholder="なんのはなしにする?" >
+                        <button id="create-story-btn" onclick="createCustomStory()">つくる</button>
+                    </div>
+                    <p>すきなおはなしつくってみよう</p>
+                </div>
         </section>
     </main>
 
     <footer>
         <div class="footer-content">
-            <p>&copy; 2025 みまもりちゃん. All rights reserved.</p>
-            <ul class="footer-links">
-                <li><a href="#">プライバシーポリシー</a></li>
-                <li><a href="#">利用規約</a></li>
-                <li><a href="#">お問い合わせ</a></li>
+            <p>&copy; 2025 まもりん. All rights reserved.</p>
             </ul>
         </div>
     </footer>
@@ -60,6 +64,38 @@
             // ストーリータイプをURLパラメータとして story_agent.html に渡す
             window.location.href = `/src/story_agent.html?type=${encodeURIComponent(storyType)}`;
         }
+
+        function createCustomStory() {
+            const input = document.getElementById('custom-story-input');
+            const customStory = input.value.trim();
+            
+            if (customStory === '') {
+                alert('お話の内容を入力してください！');
+                input.focus();
+                return;
+            }
+            
+            if (customStory.length > 50) {
+                alert('お話の内容は50文字以内で入力してください！');
+                input.focus();
+                return;
+            }
+            
+            console.log('カスタムストーリー作成:', customStory);
+            selectStoryType(customStory);
+        }
+
+        // Enterキーでもカスタムストーリーを作成できるようにする
+        document.addEventListener('DOMContentLoaded', function() {
+            const input = document.getElementById('custom-story-input');
+            if (input) {
+                input.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        createCustomStory();
+                    }
+                });
+            }
+        });
     </script>
 </body>
 </html>
