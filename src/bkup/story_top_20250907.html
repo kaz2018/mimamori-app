@@ -2,27 +2,25 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="description" content="子育て世代を応援。まもりんが独自の絵本を作って読み上げてくれる読み聞かせアプリです。寝かしつけ、家事タイムのお手伝いをします。">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>おはなしまもりん-まもりんの読み聞かせ</title>
+    <title>まもりんの読み聞かせ</title>
     <link rel="stylesheet" href="/src/styles.css">
 </head>
 <body>
     <header>
         <div class="logo">
-            <h1><a href="/">おはなし　まもりん</a></h1>
+            <h1><a href="/">まもりんの読み聞かせ</a></h1>
         </div>
         <div class="choice-btn">
             <button class="blue-btn" onclick="hoge">あお</button>
             <button class="pink-btn" onclick="fuga">ピンク</button>
-            <p>いろがかわるよ</p>
         </div>
     </header>
 
     <main>
         <!-- Story Selection Section -->
         <section id="features" class="features">
-            <p class="features-img"><img src="/src/img/MamorinPink.png" alt="どんなおはなしがいいかな"></p>
+            <p class="features-img"><img src="/src/img/hello-image.jpg" alt="今日はどんなお話を聞きたいかな？"></p>
             <div class="feature-grid">
                 <div class="feature-card" onclick="selectStoryType('動物のお話')">
                     <h3 class="feature-icon animal">どうぶつ</h3>
@@ -36,20 +34,23 @@
                     <h3 class="feature-icon princess">おひめさま</h3>
                     <p>きれいなおひめさまのステキなおはなし</p>
                 </div>
-                <div class="feature-card" onclick="selectStoryType('動物のお話')">
+                <div class="feature-card" onclick="selectStoryType('乗り物のお話')">
                     <h3 class="feature-icon vehicle">のりもの</h3>
                     <p>はやくてかっこいいのりもののおはなし</p>
                 </div>
                 <div class="make">
-                    <input type="text" id="custom-story-input" value="" placeholder="じぶんで　おはなしを　つくる" >
-                    <button id="create-story-btn" onclick="createCustomStory()">つくる</button>
+                    <div class="input-group">
+                        <input type="text" id="custom-story-input" value="" placeholder="なんのはなしにする?" >
+                        <button id="create-story-btn" onclick="createCustomStory()">つくる</button>
+                    </div>
+                    <p>すきなおはなしつくってみよう</p>
                 </div>
         </section>
     </main>
 
     <footer>
         <div class="footer-content">
-            <p>&copy; 2025 おはなしまもりん. All rights reserved.</p>
+            <p>&copy; 2025 まもりん. All rights reserved.</p>
             </ul>
         </div>
     </footer>
