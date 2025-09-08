@@ -14,6 +14,9 @@ import os
 import uvicorn
 import yaml
 
+# Google認証の事前初期化
+from auth_init import initialize_google_services, get_initialization_status
+
 # ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
 # このファイル(main.py)の場所を基準に、静的ファイルディレクトリの絶対パスを定義
 BASE_DIR = Path(__file__).resolve().parent
@@ -36,6 +39,14 @@ def load_env_files():
                     print(f"Loaded env var: {key}")
 
 load_env_files()
+
+# Google認証の事前初期化
+print("🚀 アプリケーション起動中...")
+auth_result = initialize_google_services()
+if auth_result["success"]:
+    print("✅ Google認証の事前初期化完了")
+else:
+    print(f"⚠️ Google認証の初期化に失敗: {auth_result['error']}")
 
 app = FastAPI()
 
