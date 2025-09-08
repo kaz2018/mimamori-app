@@ -5,6 +5,7 @@ class StoryAgent {
         this.isLoading = false;
         this.speechSynthesis = window.speechSynthesis;
         this.isReading = false;
+        this.currentAudio = null; // 現在再生中の音声ファイル
         this.apiBaseUrl = window.location.origin; // ADK APIのベースURL
         this.pageCount = 0; // ページカウンター追加
         this.maxPages = 3; // 最大3ページ
@@ -12,6 +13,8 @@ class StoryAgent {
         this.nextPageData = null; // 次ページのプリロードデータ
         this.p3ImageUrl = null; // P3の画像URLを保持
         this.imageStatusInterval = null; // 画像生成状況監視のインターバル
+        this.audioEnabled = true; // 音声読み上げの有効/無効状態
+        this.currentPageRead = false; // 現在のページが読み上げ済みかどうか
         this.init();
     }
 
@@ -39,6 +42,9 @@ class StoryAgent {
         }
 
         if (readAloudBtn) {
+            // 既存のイベントリスナーを削除（重複防止）
+            readAloudBtn.removeEventListener('click', this.toggleReadAloud);
+            // 新しいイベントリスナーを設定
             readAloudBtn.addEventListener('click', () => {
                 this.toggleReadAloud();
             });
@@ -71,6 +77,14 @@ class StoryAgent {
     async startStory(storyType) {
         // 既存の画像生成状況の監視を停止
         this.stopImageStatusMonitoring();
+        
+        // 現在の読み上げを停止
+        this.stopReading();
+        
+        // 新しいストーリー開始時に読み上げ済みフラグをリセット
+        this.currentPageRead = false;
+        this.audioEnabled = true; // 新しいストーリーでは音声を有効にする
+        console.log('📚 新しいストーリー開始: 読み上げ状態をリセット');
         
         this.pageCount = 1; // P1から開始
         console.log('新しいストーリー開始 - P1');
@@ -349,7 +363,12 @@ class StoryAgent {
 
     displayStory(storyData) {
         console.log('=== displayStory 開始 ===');
+        console.log('🔍 displayStory呼び出し元のスタックトレース:');
+        console.trace();
         console.log('受信したストーリーデータ:', storyData);
+        
+        // 現在の読み上げを停止
+        this.stopReading();
         
         this.isLoading = false;
         document.getElementById('loading-section').classList.add('hidden');
@@ -408,8 +427,26 @@ class StoryAgent {
             }
         }, 200); // 200ms待ってから実行
         
-        // 自動読み上げ（オプション）
-        this.readStoryText(storyData.text);
+        // 音声が有効な場合のみ自動読み上げ
+        console.log('🔍 自動読み上げ判定開始');
+        if (this.audioEnabled && !this.currentPageRead && !this.isReading) {
+            console.log('🎤 自動読み上げを開始 - 条件: audioEnabled=true, currentPageRead=false, isReading=false');
+            this.readStoryText(storyData.text);
+            this.currentPageRead = true;
+        } else if (!this.audioEnabled) {
+            console.log('🔇 音声が無効のため自動読み上げをスキップ - audioEnabled=false');
+        } else if (this.currentPageRead) {
+            console.log('🔇 既に読み上げ済みのため自動読み上げをスキップ - currentPageRead=true');
+        } else if (this.isReading) {
+            console.log('🔇 既に読み上げ中のため自動読み上げをスキップ - isReading=true');
+        }
+        
+        // デバッグ用: 現在の状態をログ出力
+        console.log('🔍 displayStory時の状態:', {
+            audioEnabled: this.audioEnabled,
+            currentPageRead: this.currentPageRead,
+            isReading: this.isReading
+        });
     }
     
     showPictureArea() {
@@ -577,12 +614,26 @@ class StoryAgent {
             return;
         }
         
+        // 既に監視中の場合はスキップ
+        if (this.imageStatusInterval) {
+            console.log('⚠️ 画像生成状況の監視は既に実行中です');
+            return;
+        }
+        
         console.log(`🔄 画像生成状況の監視を開始 - 対象: P${this.pageCount + 1}`);
         
-        // 既存のインターバルをクリア
+        // 既存のインターバルをクリア（念のため）
         this.stopImageStatusMonitoring();
         
         this.imageStatusInterval = setInterval(async () => {
+            // 実行中のフラグをチェック（重複実行防止）
+            if (this.imageStatusChecking) {
+                console.log('⚠️ 画像生成状況チェックは既に実行中です');
+                return;
+            }
+            
+            this.imageStatusChecking = true;
+            
             try {
                 const response = await fetch(`${this.apiBaseUrl}/agent/storytelling/image-status/${this.currentSession}`);
                 if (response.ok) {
@@ -593,10 +644,25 @@ class StoryAgent {
                     if (continueBtn && data.has_next_image) {
                         // 画像が生成完了したら、ポーリングを停止してボタンを活性化
                         console.log('✅ 次のページの画像が準備完了');
-                        this.stopImageStatusMonitoring();
-                        continueBtn.disabled = false;
-                        continueBtn.textContent = '📖 続きを読む';
-                        continueBtn.style.opacity = '1';
+                        
+                        // 重複実行を防ぐため、既に停止済みかチェック
+                        if (this.imageStatusInterval) {
+                            this.stopImageStatusMonitoring();
+                        } else {
+                            console.log('⚠️ 画像監視は既に停止済みです');
+                        }
+                        
+                        // 画像準備完了 - 読み上げとは無関係
+                        console.log('🖼️ 画像準備完了 - 続きを読むボタンを有効化');
+                        
+                        // ボタンが既に有効化されている場合はスキップ
+                        if (!continueBtn.disabled) {
+                            console.log('⚠️ 続きを読むボタンは既に有効化済みです');
+                        } else {
+                            continueBtn.disabled = false;
+                            continueBtn.textContent = '📖 続きを読む';
+                            continueBtn.style.opacity = '1';
+                        }
                     }
                 } else {
                     // APIエラー時もポーリングを停止
@@ -605,6 +671,8 @@ class StoryAgent {
             } catch (error) {
                 console.error('❌ 画像生成状況の取得に失敗:', error);
                 this.stopImageStatusMonitoring();
+            } finally {
+                this.imageStatusChecking = false;
             }
         }, 3000); // 3秒ごとにチェック
     }
@@ -614,13 +682,23 @@ class StoryAgent {
         if (this.imageStatusInterval) {
             clearInterval(this.imageStatusInterval);
             this.imageStatusInterval = null;
+            this.imageStatusChecking = false; // 実行中フラグもリセット
             console.log('🛑 画像生成状況の監視を停止');
+        } else {
+            console.log('🛑 画像生成状況の監視は既に停止済み');
         }
     }
     
     async continueStory() {
         // 進行中の画像監視を停止
         this.stopImageStatusMonitoring();
+
+        // 現在の読み上げを停止
+        this.stopReading();
+        
+        // ページ遷移時に読み上げ済みフラグをリセット
+        this.currentPageRead = false;
+        console.log('📄 ページ遷移: 読み上げ済みフラグをリセット');
 
         // ページ制限チェック
         if (this.pageCount >= this.maxPages) {
@@ -709,6 +787,13 @@ class StoryAgent {
             this.newStory();
             return;
         }
+        
+        // 現在の読み上げを停止
+        this.stopReading();
+        
+        // 選択肢選択時に読み上げ済みフラグをリセット
+        this.currentPageRead = false;
+        console.log('📄 選択肢選択: 読み上げ済みフラグをリセット');
         
         this.showLoading();
         
@@ -926,6 +1011,31 @@ class StoryAgent {
     }
 
     readStoryText(text) {
+        // 音声が無効化されている場合は読み上げをスキップ
+        if (!this.audioEnabled) {
+            console.log('🔇 音声が無効化されているため、読み上げをスキップ');
+            return;
+        }
+        
+        // 既に読み上げ中の場合は停止してから開始
+        if (this.isReading) {
+            console.log('🔇 既存の読み上げを停止してから新しい読み上げを開始');
+            this.stopReading();
+        }
+        
+        // 無限ループ防止: 同じページで既に読み上げ済みの場合はスキップ
+        if (this.currentPageRead) {
+            console.log('🔇 同じページで既に読み上げ済みのため、読み上げをスキップ');
+            return;
+        }
+        
+        console.log('🎤 読み上げ開始:', text.substring(0, 50) + '...');
+        console.log('🔍 readStoryText時の状態:', {
+            audioEnabled: this.audioEnabled,
+            currentPageRead: this.currentPageRead,
+            isReading: this.isReading
+        });
+        
         // Text-to-Speech APIを呼び出して音声を生成・再生
         this.generateAndPlayAudio(text);
     }
@@ -933,6 +1043,12 @@ class StoryAgent {
     async generateAndPlayAudio(text) {
         try {
             console.log('🎤 音声生成開始');
+            
+            // 音声生成開始前に停止状態をチェック
+            if (!this.audioEnabled) {
+                console.log('🔇 音声生成中に停止されたため、生成をキャンセル');
+                return;
+            }
             
             // TTS APIを呼び出し
             const response = await fetch(`${this.apiBaseUrl}/agent/storytelling/generate-audio`, {
@@ -948,15 +1064,29 @@ class StoryAgent {
             
             if (response.ok) {
                 const data = await response.json();
+                console.log('🎵 TTS APIレスポンス:', data);
+                console.log('🎵 レスポンス詳細 - success:', data.success, 'audio_url:', data.audio_url);
+                
+                // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+                // 修正点：音声ファイル受信後に、現在の音声状態を再確認
+                if (!this.audioEnabled) {
+                    console.log('🔇 音声生成完了後に停止が指示されたため、再生をキャンセルします。');
+                    return; // 再生せずに処理を終了
+                }
+                // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+                
                 if (data.success && data.audio_url) {
                     console.log('🎵 音声再生開始:', data.audio_url);
+                    console.log('🎵 音声URLの形式:', typeof data.audio_url, '長さ:', data.audio_url.length);
                     this.playAudio(data.audio_url);
                 } else {
                     console.log('⚠️ 音声生成に失敗、ブラウザ音声合成を使用');
+                    console.log('⚠️ 失敗理由 - success:', data.success, 'audio_url存在:', !!data.audio_url);
                     this.fallbackSpeechSynthesis(text);
                 }
             } else {
                 console.log('⚠️ TTS APIエラー、ブラウザ音声合成を使用');
+                console.log('⚠️ HTTPステータス:', response.status, response.statusText);
                 this.fallbackSpeechSynthesis(text);
             }
         } catch (error) {
@@ -967,60 +1097,197 @@ class StoryAgent {
     }
     
     playAudio(audioUrl) {
+        // 音声再生開始前に停止状態をチェック
+        if (!this.audioEnabled) {
+            console.log('🔇 音声再生開始時に停止されたため、再生をキャンセル');
+            return;
+        }
+        
+        // 既存の音声を停止
+        if (this.currentAudio) {
+            this.currentAudio.pause();
+            this.currentAudio.currentTime = 0;
+        }
+        
         const audio = new Audio(audioUrl);
+        this.currentAudio = audio; // 現在の音声を保持
+        
         audio.onloadstart = () => console.log('🎵 音声読み込み開始');
         audio.oncanplay = () => console.log('🎵 音声再生可能');
+        audio.onloadeddata = () => console.log('🎵 音声データ読み込み完了');
+        audio.oncanplaythrough = () => console.log('🎵 音声バッファリング完了');
+        audio.onwaiting = () => console.log('🎵 音声バッファリング中...');
+        audio.onstalled = () => console.log('⚠️ 音声読み込みが停止しました');
+        audio.onsuspend = () => console.log('⚠️ 音声読み込みが中断されました');
         audio.onplay = () => {
             console.log('🎵 音声再生開始');
             this.isReading = true;
             this.updateReadAloudButton();
+            // 音声再生開始時にボタンを再有効化
+            this.setReadAloudButtonEnabled(true);
+            
+            // 音声の進行状況を監視
+            this.startAudioProgressMonitoring(audio);
         };
         audio.onended = () => {
             console.log('🎵 音声再生終了');
             this.isReading = false;
+            this.currentAudio = null;
             this.updateReadAloudButton();
+            // 音声再生終了時にボタンを再有効化
+            this.setReadAloudButtonEnabled(true);
         };
         audio.onerror = (e) => {
             console.error('❌ 音声再生エラー:', e);
+            console.error('❌ エラー詳細:', {
+                error: e,
+                networkState: audio.networkState,
+                readyState: audio.readyState,
+                src: audio.src,
+                currentTime: audio.currentTime,
+                duration: audio.duration
+            });
             console.log('⚠️ ブラウザ音声合成を使用');
+            this.isReading = false;
+            this.currentAudio = null;
+            this.updateReadAloudButton();
+            // エラー時もボタンを再有効化
+            this.setReadAloudButtonEnabled(true);
+        };
+        audio.onpause = () => {
+            console.log('🎵 音声一時停止');
+            this.isReading = false;
+            this.updateReadAloudButton();
+            // 一時停止時もボタンを再有効化
+            this.setReadAloudButtonEnabled(true);
         };
         
         audio.play().catch(error => {
             console.error('❌ 音声再生失敗:', error);
             console.log('⚠️ ブラウザ音声合成を使用');
+            this.isReading = false;
+            this.currentAudio = null;
+            this.updateReadAloudButton();
+            // 再生失敗時もボタンを再有効化
+            this.setReadAloudButtonEnabled(true);
         });
     }
     
     fallbackSpeechSynthesis(text) {
+        // 音声合成開始前に停止状態をチェック
+        if (!this.audioEnabled) {
+            console.log('🔇 音声合成開始時に停止されたため、合成をキャンセル');
+            return;
+        }
+        
         // ブラウザの音声合成APIを使用（フォールバック）
         if (this.speechSynthesis && !this.isReading) {
+            console.log('🎤 ブラウザ音声合成を使用（フォールバック）');
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'ja-JP';
             utterance.rate = 0.8;
             utterance.pitch = 1.2;
             
             utterance.onend = () => {
+                console.log('🎤 ブラウザ音声合成終了');
                 this.isReading = false;
                 this.updateReadAloudButton();
+                // ブラウザ音声合成終了時にボタンを再有効化
+                this.setReadAloudButtonEnabled(true);
+            };
+            
+            utterance.onerror = (event) => {
+                console.error('❌ ブラウザ音声合成エラー:', event);
+                this.isReading = false;
+                this.updateReadAloudButton();
+                // エラー時もボタンを再有効化
+                this.setReadAloudButtonEnabled(true);
             };
             
             this.speechSynthesis.speak(utterance);
             this.isReading = true;
             this.updateReadAloudButton();
+            // ブラウザ音声合成開始時にボタンを再有効化
+            this.setReadAloudButtonEnabled(true);
+        } else if (this.isReading) {
+            console.log('⚠️ 既に読み上げ中のため、ブラウザ音声合成をスキップ');
         }
     }
 
     toggleReadAloud() {
+        console.log('🔍 StoryAgent.toggleReadAloud が呼び出されました');
+        console.log('🔍 現在の状態:', {
+            isReading: this.isReading,
+            audioEnabled: this.audioEnabled,
+            currentPageRead: this.currentPageRead
+        });
+        console.trace();
+        
+        // ボタンを一時的に無効化（連続押し防止）
+        this.setReadAloudButtonEnabled(false);
+        
         if (this.isReading) {
-            this.speechSynthesis.cancel();
-            this.isReading = false;
+            // 音声を停止する場合
+            console.log('🔇 読み上げ停止ボタンが押されました');
+            this.stopReading();
+            this.audioEnabled = false; // 音声を無効にする
+            
+            // 停止処理完了後にボタンを再有効化（タイミングを調整）
+            setTimeout(() => {
+                this.setReadAloudButtonEnabled(true);
+                console.log('🔘 停止処理完了 - ボタンを再有効化');
+            }, 1000); // 500ms → 1000msに変更
         } else {
+            // 音声を開始/再開する場合
             const storyText = document.getElementById('story-text').textContent;
             if (storyText) {
+                console.log('🎤 読み上げ開始/再開ボタンが押されました');
+                this.audioEnabled = true; // 音声を有効にする
+                this.currentPageRead = false; // 読み上げ済みフラグをリセット（再開のため）
                 this.readStoryText(storyText);
+                this.currentPageRead = true; // 読み上げ開始後にフラグを設定
+                
+                // 読み上げ開始処理完了後にボタンを再有効化
+                setTimeout(() => {
+                    this.setReadAloudButtonEnabled(true);
+                }, 1000);
+            } else {
+                // テキストがない場合は即座にボタンを再有効化
+                this.setReadAloudButtonEnabled(true);
             }
         }
         this.updateReadAloudButton();
+    }
+
+    stopReading() {
+        console.log('🔇 読み上げ停止処理開始 - isReading:', this.isReading, 'currentAudio:', !!this.currentAudio, 'audioEnabled:', this.audioEnabled);
+        
+        // まず読み上げ状態をfalseに設定（重複実行を防ぐ）
+        this.isReading = false;
+        
+        // ブラウザ音声合成を停止（複数回実行して確実に停止）
+        if (this.speechSynthesis) {
+            this.speechSynthesis.cancel();
+            this.speechSynthesis.cancel(); // 念のため2回実行
+            console.log('🔇 ブラウザ音声合成を停止');
+        }
+        
+        // 現在再生中の音声ファイルを停止
+        if (this.currentAudio) {
+            this.currentAudio.pause();
+            this.currentAudio.currentTime = 0;
+            this.currentAudio = null;
+            console.log('🔇 音声ファイルを停止');
+        }
+        
+        // ボタン表示を更新
+        this.updateReadAloudButton();
+        console.log('🔇 読み上げを停止しました');
+        console.log('🔍 停止後の状態:', {
+            audioEnabled: this.audioEnabled,
+            currentPageRead: this.currentPageRead,
+            isReading: this.isReading
+        });
     }
 
     updateReadAloudButton() {
@@ -1035,13 +1302,28 @@ class StoryAgent {
         }
     }
 
+    setReadAloudButtonEnabled(enabled) {
+        const button = document.getElementById('read-aloud-btn');
+        if (button) {
+            button.disabled = !enabled;
+            button.style.opacity = enabled ? '1' : '0.5';
+            button.style.cursor = enabled ? 'pointer' : 'not-allowed';
+            console.log('🔘 読み上げボタンの状態を変更:', enabled ? '有効' : '無効');
+        }
+    }
+
+    startAudioProgressMonitoring(audio) {
+        // 音声進行状況の監視は不要（現在の問題とは関係ないため）
+        // 必要に応じて後で再有効化可能
+    }
+
     newStory() {
         // 新しいお話選択ページに戻る
         this.speechSynthesis.cancel();
         this.isReading = false;
         this.lastImageUrl = null; // 画像URLをクリア
         
-        window.location.href = 'story_top.html';
+        window.location.href = '/src/story_top.html';
     }
 
     showError(message) {
@@ -1053,7 +1335,7 @@ class StoryAgent {
 
 // Global functions for onclick handlers
 function goHome() {
-    window.location.href = 'story_top.html';
+    window.location.href = '/src/story_top.html';
 }
 
 function startStory(storyType) {
@@ -1067,6 +1349,8 @@ function newStory() {
 }
 
 function toggleReadAloud() {
+    console.log('🔍 グローバル関数 toggleReadAloud が呼び出されました');
+    console.trace();
     if (typeof storyAgent !== 'undefined') {
         storyAgent.toggleReadAloud();
     }
