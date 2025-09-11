@@ -19,7 +19,7 @@ body {
     font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
     line-height: 1.6;
     color: var(--text-dark);
-    background-color: var(--light-pink);
+    background-color: var(--white);
 }
 
 .navbar {
@@ -33,7 +33,7 @@ body {
 
 .logo {
     display: flex;
-    margin-top: 5px
+    margin-top: 5px;
     align-items: center;
 }
 
@@ -198,11 +198,14 @@ body {
 
 
 .features-img {
-    display: block;
-    margin: 0 auto;
     background: #ffedbf url("img/Background.png") repeat;
     color: #ffedbf;
     font-size: 5px;
+}
+
+.features-img img {
+    display: block;
+    margin: 0 auto;
 }
 
 .features h2 {

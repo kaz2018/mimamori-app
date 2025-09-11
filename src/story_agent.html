@@ -7,6 +7,7 @@
     <title>おはなしまもりん-まもりんの読み聞かせ</title>
     <link rel="stylesheet" href="/src/styles.css">
     <link rel="stylesheet" href="/src/story_styles.css">
+    <link rel="stylesheet" href="/src/blue_styles.css" disabled>
 </head>
 <body>
     <header>
@@ -79,12 +80,12 @@
             localStorage.setItem('color-theme', theme);
             
             // CSSファイルを動的に切り替え
-            const currentLink = document.querySelector('link[href*="styles.css"]');
-            if (currentLink) {
+            const blueLink = document.querySelector('link[href*="blue_styles.css"]');
+            if (blueLink) {
                 if (theme === 'blue') {
-                    currentLink.href = '/src/blue_styles.css';
+                    blueLink.disabled = false; // Blueテーマを有効
                 } else {
-                    currentLink.href = '/src/styles.css';
+                    blueLink.disabled = true;  // Pinkテーマの時はBlueを無効
                 }
             }
             

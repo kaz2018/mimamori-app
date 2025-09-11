@@ -103,6 +103,17 @@ async def root():
     print(f"📄 index.html exists: {index_path.exists()}")
     return FileResponse(index_path)
 
+# story_top.htmlへの直接アクセス用エンドポイント
+@app.get("/story_top.html")
+async def story_top():
+    story_top_path = STATIC_DIR / "story_top.html"
+    print(f"📄 Serving story_top.html from: {story_top_path}")
+    print(f"📄 story_top.html exists: {story_top_path.exists()}")
+    if story_top_path.exists():
+        return FileResponse(story_top_path)
+    else:
+        raise HTTPException(status_code=404, detail="story_top.html not found")
+
 # 静的ファイルの存在確認用エンドポイント
 @app.get("/health/static-files")
 async def check_static_files():

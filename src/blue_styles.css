@@ -19,7 +19,7 @@ body {
     font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
     line-height: 1.6;
     color: var(--text-dark);
-    background-color: var(--light-blue);
+    background-color: var(--white);
 }
 
 .navbar {
@@ -311,7 +311,7 @@ body {
     border: 2px solid #d9d9da;
     border-radius: 5px;
     font-size: 20px;
-    color: #d9d9da;
+    color: #000;
 }
 
 .make-btn {
@@ -589,6 +589,10 @@ footer {
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin-bottom: 1rem;
+}
+
+.picture-area {
+    border: 3px solid var(--primary-blue);
 }
 
 @media (max-width: 768px) {

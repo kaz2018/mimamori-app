@@ -5,10 +5,8 @@
     <meta name="description" content="子育て世代を応援。まもりんが独自の絵本を作って読み上げてくれる読み聞かせアプリです。寝かしつけ、家事タイムのお手伝いをします。">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>おはなしまもりん-まもりんの読み聞かせ</title>
-    <link rel="stylesheet" href="/scr/styles.css">
-    <!--
-    <link rel="stylesheet" href="/scr/blue_styles.css">
-    -->
+    <link rel="stylesheet" href="/src/styles.css">
+    <link rel="stylesheet" href="/src/blue_styles.css" disabled>
 </head>
 <body>
     <header>
@@ -64,12 +62,12 @@
             localStorage.setItem('color-theme', theme);
             
             // CSSファイルを動的に切り替え
-            const currentLink = document.querySelector('link[href*="styles.css"]');
-            if (currentLink) {
+            const blueLink = document.querySelector('link[href*="blue_styles.css"]');
+            if (blueLink) {
                 if (theme === 'blue') {
-                    currentLink.href = '/src/blue_styles.css';
+                    blueLink.disabled = false; // Blueテーマを有効
                 } else {
-                    currentLink.href = '/src/styles.css';
+                    blueLink.disabled = true;  // Pinkテーマの時はBlueを無効
                 }
             }
             
