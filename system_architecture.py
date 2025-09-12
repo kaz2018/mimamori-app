@@ -184,10 +184,16 @@ with Diagram("読み聞かせアプリ データフロー\n(Gemini ADK マルチ
             tts_tool = Python("tts_tool.py\n(音声生成)")
     
     # AI処理（VertexAIアイコン付き）
-    with Cluster("VertexAI", graph_attr={"style": "rounded,filled", "fillcolor": "white", "margin": "20,20", "label": "VertexAI", "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Vertex_AI_Logo.svg/200px-Vertex_AI_Logo.svg.png", "imagepos": "tc", "imagescale": "true"}):
-        story_generation = Node("Gemini 2.5 Flash\n(物語生成)", icon_path="https://raw.githubusercontent.com/mingrammer/diagrams/master/resources/gcp/ai/vertex-ai.png", height="0.8")
-        image_generation = Node("Gemini 2.5 Flash\nImage\n(画像生成)", icon_path="https://raw.githubusercontent.com/mingrammer/diagrams/master/resources/gcp/ai/vertex-ai.png", height="0.8")
-        audio_generation = Node("Google gTTS\n(音声生成)", icon_path="https://raw.githubusercontent.com/mingrammer/diagrams/master/resources/gcp/ai/vertex-ai.png", height="0.8")
+    with Cluster("VertexAI", graph_attr={"style": "rounded,filled", "fillcolor": "white", "margin": "40,40", "label": "VertexAI", "height": "3.0", "width": "2.5"}):
+        # 上部に余白を作るためのダミーノード
+        dummy_top = Node("", style="invis", height="0.5")
+        
+        story_generation = Node("Gemini 2.5 Flash\n(物語生成)", icon_path="https://raw.githubusercontent.com/mingrammer/diagrams/master/resources/gcp/ai/vertex-ai.png", height="0.8", width="1.2")
+        image_generation = Node("Gemini 2.5 Flash\nImage\n(画像生成)", icon_path="https://raw.githubusercontent.com/mingrammer/diagrams/master/resources/gcp/ai/vertex-ai.png", height="0.8", width="1.2")
+        audio_generation = Node("Google gTTS\n(音声生成)", icon_path="https://raw.githubusercontent.com/mingrammer/diagrams/master/resources/gcp/ai/vertex-ai.png", height="0.8", width="1.2")
+        
+        # 下部に余白を作るためのダミーノード
+        dummy_bottom = Node("", style="invis", height="0.5")
     
     # ストレージ
     storage = GCS("Cloud Storage\n(画像・音声保存)")
@@ -199,6 +205,7 @@ with Diagram("読み聞かせアプリ データフロー\n(Gemini ADK マルチ
     adk_runner >> storytelling_agent
     storytelling_agent >> parallel_tool
     storytelling_agent >> tts_tool
+    storytelling_agent >> story_generation  # 物語生成への直接接続
     parallel_tool >> story_generation
     parallel_tool >> image_generation
     tts_tool >> audio_generation
@@ -209,6 +216,10 @@ with Diagram("読み聞かせアプリ データフロー\n(Gemini ADK マルチ
     adk_runner >> backend
     backend >> frontend
     frontend >> user
+    
+    # ダミーノードの配置（余白確保）
+    dummy_top >> story_generation
+    audio_generation >> dummy_bottom
 
 # 技術スタック図の作成
 with Diagram("読み聞かせアプリ 技術スタック", 

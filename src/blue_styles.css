@@ -48,7 +48,7 @@ body {
 }
 
 .logo a {
-    background: var(--light-blue) url("img/OmamoriMarkBlue.png") no-repeat left center;
+    background: var(--white) url("img/OmamoriMarkBlue.png") no-repeat left center;
     margin-left: 1rem;
     padding-left: 50px;
     text-decoration: none; 
@@ -264,6 +264,7 @@ body {
 }
 
 .feature-card:hover {
+    cursor: pointer;
     transform: translateY(-5px);
     box-shadow: 0 10px 30px var(--shadow);
 }
