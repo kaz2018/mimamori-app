@@ -14,6 +14,9 @@ import os
 import uvicorn
 import yaml
 
+# Google認証の事前初期化
+from auth_init import initialize_google_services, get_initialization_status
+
 # ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
 # このファイル(main.py)の場所を基準に、静的ファイルディレクトリの絶対パスを定義
 BASE_DIR = Path(__file__).resolve().parent
@@ -36,6 +39,14 @@ def load_env_files():
                     print(f"Loaded env var: {key}")
 
 load_env_files()
+
+# Google認証の事前初期化
+print("🚀 アプリケーション起動中...")
+auth_result = initialize_google_services()
+if auth_result["success"]:
+    print("✅ Google認証の事前初期化完了")
+else:
+    print(f"⚠️ Google認証の初期化に失敗: {auth_result['error']}")
 
 app = FastAPI()
 
@@ -91,6 +102,17 @@ async def root():
     print(f"📄 Serving index.html from: {index_path}")
     print(f"📄 index.html exists: {index_path.exists()}")
     return FileResponse(index_path)
+
+# story_top.htmlへの直接アクセス用エンドポイント
+@app.get("/story_top.html")
+async def story_top():
+    story_top_path = STATIC_DIR / "story_top.html"
+    print(f"📄 Serving story_top.html from: {story_top_path}")
+    print(f"📄 story_top.html exists: {story_top_path.exists()}")
+    if story_top_path.exists():
+        return FileResponse(story_top_path)
+    else:
+        raise HTTPException(status_code=404, detail="story_top.html not found")
 
 # 静的ファイルの存在確認用エンドポイント
 @app.get("/health/static-files")

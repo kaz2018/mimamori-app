@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>おはなしまもりん-まもりんの読み聞かせ</title>
     <link rel="stylesheet" href="/src/styles.css">
+    <link rel="stylesheet" href="/src/blue_styles.css" disabled>
 </head>
 <body>
     <header>
@@ -13,8 +14,8 @@
             <h1><a href="/">おはなし　まもりん</a></h1>
         </div>
         <div class="choice-btn">
-            <button class="blue-btn" onclick="hoge">あお</button>
-            <button class="pink-btn" onclick="fuga">ピンク</button>
+            <button class="blue-btn" onclick="changeTheme('blue')">あお</button>
+            <button class="pink-btn" onclick="changeTheme('pink')">ピンク</button>
             <p>いろがかわるよ</p>
         </div>
     </header>
@@ -42,7 +43,7 @@
                 </div>
                 <div class="make">
                     <input type="text" id="custom-story-input" value="" placeholder="じぶんで　おはなしを　つくる" >
-                    <button id="create-story-btn" onclick="createCustomStory()">つくる</button>
+                    <button class="make-btn" onclick="createCustomStory()">つくる</button>
                 </div>
         </section>
     </main>
@@ -55,6 +56,45 @@
     </footer>
 
     <script>
+        // カラーテーマ切り替え機能
+        function changeTheme(theme) {
+            // テーマをlocalStorageに保存
+            localStorage.setItem('color-theme', theme);
+            
+            // CSSファイルを動的に切り替え
+            const blueLink = document.querySelector('link[href*="blue_styles.css"]');
+            if (blueLink) {
+                if (theme === 'blue') {
+                    blueLink.disabled = false; // Blueテーマを有効
+                } else {
+                    blueLink.disabled = true;  // Pinkテーマの時はBlueを無効
+                }
+            }
+            
+            // 画像を動的に切り替え
+            const mamorinImg = document.querySelector('.features-img img');
+            if (mamorinImg) {
+                if (theme === 'blue') {
+                    mamorinImg.src = '/src/img/MamorinBlue.png';
+                } else {
+                    mamorinImg.src = '/src/img/MamorinPink.png';
+                }
+            }
+            
+            console.log('テーマを変更しました:', theme);
+        }
+
+        // ページ読み込み時に保存されたテーマを適用
+        function loadColorTheme() {
+            const savedTheme = localStorage.getItem('color-theme');
+            if (savedTheme) {
+                changeTheme(savedTheme);
+            } else {
+                // デフォルトテーマ（ピンク）を設定
+                changeTheme('pink');
+            }
+        }
+
         function goHome() {
             window.location.href = '/src/index.html';
         }
@@ -84,8 +124,12 @@
             selectStoryType(customStory);
         }
 
-        // Enterキーでもカスタムストーリーを作成できるようにする
+        // ページ読み込み時に実行
         document.addEventListener('DOMContentLoaded', function() {
+            // 保存されたテーマを読み込み
+            loadColorTheme();
+            
+            // Enterキーでもカスタムストーリーを作成できるようにする
             const input = document.getElementById('custom-story-input');
             if (input) {
                 input.addEventListener('keypress', function(e) {
