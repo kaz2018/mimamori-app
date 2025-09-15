@@ -7,16 +7,12 @@
     <title>おはなしまもりん-まもりんの読み聞かせ</title>
     <link rel="stylesheet" href="/src/styles.css">
     <link rel="stylesheet" href="/src/story_styles.css">
+    <link rel="stylesheet" href="/src/blue_styles.css" disabled>
 </head>
 <body>
     <header>
         <div class="logo">
             <h1><a href="/">おはなし　まもりん</a></h1>
-        </div>
-        <div class="choice-btn">
-            <button class="blue-btn" onclick="hoge">あお</button>
-            <button class="pink-btn" onclick="fuga">ピンク</button>
-            <p>いろがかわるよ</p>
         </div>
     </header>
 
@@ -77,6 +73,46 @@
         </div>
     </footer>
 
+    <script>
+        // カラーテーマ切り替え機能
+        function changeTheme(theme) {
+            // テーマをlocalStorageに保存
+            localStorage.setItem('color-theme', theme);
+            
+            // CSSファイルを動的に切り替え
+            const blueLink = document.querySelector('link[href*="blue_styles.css"]');
+            if (blueLink) {
+                if (theme === 'blue') {
+                    blueLink.disabled = false; // Blueテーマを有効
+                } else {
+                    blueLink.disabled = true;  // Pinkテーマの時はBlueを無効
+                }
+            }
+            
+            // 画像を動的に切り替え
+            const rabbitImg = document.querySelector('.rabbit-image');
+            if (rabbitImg) {
+                // 現在はmimamori.pngのみなので、テーマに関係なく同じ画像を使用
+                rabbitImg.src = '/src/img/mimamori.png';
+            }
+            
+            console.log('テーマを変更しました:', theme);
+        }
+
+        // ページ読み込み時に保存されたテーマを適用
+        function loadColorTheme() {
+            const savedTheme = localStorage.getItem('color-theme');
+            if (savedTheme) {
+                changeTheme(savedTheme);
+            } else {
+                // デフォルトテーマ（ピンク）を設定
+                changeTheme('pink');
+            }
+        }
+
+        // 即座にテーマを読み込み（DOMContentLoadedを待たない）
+        loadColorTheme();
+    </script>
     <script src="/src/story_script.js"></script>
 </body>
 </html>
